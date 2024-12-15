@@ -1,0 +1,3 @@
+fastmcp==0.4.1
+imessagedb==1.4.7
+phonenumbers==8.13.52

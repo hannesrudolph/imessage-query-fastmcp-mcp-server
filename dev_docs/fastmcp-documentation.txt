@@ -1,0 +1,3856 @@
+Directory structure:
+└── jlowin-fastmcp
+    ├── pyproject.toml
+    ├── docs
+    │   └── assets
+    ├── README.md
+    ├── examples
+    │   ├── simple_echo.py
+    │   ├── memory.py
+    │   ├── readme-quickstart.py
+    │   ├── text_me.py
+    │   ├── screenshot.py
+    │   ├── echo.py
+    │   ├── desktop.py
+    │   └── complex_inputs.py
+    ├── Windows_Notes.md
+    └── src
+        └── fastmcp
+            ├── server.py
+            ├── tools
+            │   ├── tool_manager.py
+            │   ├── __init__.py
+            │   └── base.py
+            ├── resources
+            │   ├── resource_manager.py
+            │   ├── __init__.py
+            │   ├── types.py
+            │   ├── templates.py
+            │   └── base.py
+            ├── __init__.py
+            ├── cli
+            │   ├── claude.py
+            │   ├── __init__.py
+            │   └── cli.py
+            ├── utilities
+            │   ├── logging.py
+            │   ├── func_metadata.py
+            │   ├── __init__.py
+            │   └── types.py
+            ├── prompts
+            │   ├── prompt_manager.py
+            │   ├── __init__.py
+            │   ├── manager.py
+            │   └── base.py
+            ├── py.typed
+            └── exceptions.py
+
+================================================
+File: /pyproject.toml
+================================================
+[project]
+name = "fastmcp"
+dynamic = ["version"]
+description = "A more ergonomic interface for MCP servers"
+authors = [{ name = "Jeremiah Lowin" }]
+dependencies = [
+    "httpx>=0.26.0",
+    "mcp>=1.0.0,<2.0.0",
+    "pydantic-settings>=2.6.1",
+    "pydantic>=2.5.3,<3.0.0",
+    "typer>=0.9.0",
+    "python-dotenv>=1.0.1",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+
+[project.scripts]
+fastmcp = "fastmcp.cli:app"
+
+[build-system]
+requires = ["hatchling>=1.21.0", "hatch-vcs>=0.4.0"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+tests = [
+    "pre-commit",
+    "pyright>=1.1.389",
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.23.5",
+    "pytest-flakefinder",
+    "pytest-xdist>=3.6.1",
+    "ruff",
+]
+dev = ["fastmcp[tests]", "copychat>=0.5.2", "ipython>=8.12.3", "pdbpp>=0.10.3"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv", ".git", "dist"]
+pythonVersion = "3.10"
+pythonPlatform = "Darwin"
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+useLibraryCodeForTypes = true
+venvPath = "."
+venv = ".venv"
+
+
+================================================
+File: /README.md
+================================================
+<!-- omit in toc -->
+# FastMCP 🚀
+
+<div align="center">
+
+<strong>The fast, Pythonic way to build MCP servers.</strong>
+
+[![PyPI - Version](https://img.shields.io/pypi/v/fastmcp.svg)](https://pypi.org/project/fastmcp)
+[![Tests](https://github.com/jlowin/fastmcp/actions/workflows/run-tests.yml/badge.svg)](https://github.com/jlowin/fastmcp/actions/workflows/run-tests.yml)
+[![License](https://img.shields.io/github/license/jlowin/fastmcp.svg)](https://github.com/jlowin/fastmcp/blob/main/LICENSE)
+
+
+</div>
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers are a new, standardized way to provide context and tools to your LLMs, and FastMCP makes building MCP servers simple and intuitive. Create tools, expose resources, and define prompts with clean, Pythonic code:
+
+```python
+# demo.py
+
+from fastmcp import FastMCP
+
+
+mcp = FastMCP("Demo 🚀")
+
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+```
+
+That's it! Give Claude access to the server by running:
+
+```bash
+fastmcp install demo.py
+```
+
+FastMCP handles all the complex protocol details and server management, so you can focus on building great tools. It's designed to be high-level and Pythonic - in most cases, decorating a function is all you need.
+
+
+### Key features:
+* **Fast**: High-level interface means less code and faster development
+* **Simple**: Build MCP servers with minimal boilerplate
+* **Pythonic**: Feels natural to Python developers
+* **Complete***: FastMCP aims to provide a full implementation of the core MCP specification
+
+(\*emphasis on *aims*)
+
+🚨 🚧 🏗️ *FastMCP is under active development, as is the MCP specification itself. Core features are working but some advanced capabilities are still in progress.* 
+
+
+<!-- omit in toc -->
+## Table of Contents
+
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+- [What is MCP?](#what-is-mcp)
+- [Core Concepts](#core-concepts)
+  - [Server](#server)
+  - [Resources](#resources)
+  - [Tools](#tools)
+  - [Prompts](#prompts)
+  - [Images](#images)
+  - [Context](#context)
+- [Running Your Server](#running-your-server)
+  - [Development Mode (Recommended for Building \& Testing)](#development-mode-recommended-for-building--testing)
+  - [Claude Desktop Integration (For Regular Use)](#claude-desktop-integration-for-regular-use)
+  - [Direct Execution (For Advanced Use Cases)](#direct-execution-for-advanced-use-cases)
+  - [Server Object Names](#server-object-names)
+- [Examples](#examples)
+  - [Echo Server](#echo-server)
+  - [SQLite Explorer](#sqlite-explorer)
+- [Contributing](#contributing)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation-1)
+  - [Testing](#testing)
+  - [Formatting](#formatting)
+  - [Opening a Pull Request](#opening-a-pull-request)
+
+## Installation
+
+We strongly recommend installing FastMCP with [uv](https://docs.astral.sh/uv/), as it is required for deploying servers:
+
+```bash
+uv pip install fastmcp
+```
+
+Note: on macOS, uv may need to be installed with Homebrew (`brew install uv`) in order to make it available to the Claude Desktop app.
+
+Alternatively, to use the SDK without deploying, you may use pip:
+
+```bash
+pip install fastmcp
+```
+
+## Quickstart
+
+Let's create a simple MCP server that exposes a calculator tool and some data:
+
+```python
+# server.py
+
+from fastmcp import FastMCP
+
+
+# Create an MCP server
+mcp = FastMCP("Demo")
+
+
+# Add an addition tool
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+
+# Add a dynamic greeting resource
+@mcp.resource("greeting://{name}")
+def get_greeting(name: str) -> str:
+    """Get a personalized greeting"""
+    return f"Hello, {name}!"
+```
+
+You can install this server in [Claude Desktop](https://claude.ai/download) and interact with it right away by running:
+```bash
+fastmcp install server.py
+```
+
+Alternatively, you can test it with the MCP Inspector:
+```bash
+fastmcp dev server.py
+```
+
+![MCP Inspector](/docs/assets/demo-inspector.png)
+
+## What is MCP?
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) lets you build servers that expose data and functionality to LLM applications in a secure, standardized way. Think of it like a web API, but specifically designed for LLM interactions. MCP servers can:
+
+- Expose data through **Resources** (think of these sort of like GET endpoints; they are used to load information into the LLM's context)
+- Provide functionality through **Tools** (sort of like POST endpoints; they are used to execute code or otherwise produce a side effect)
+- Define interaction patterns through **Prompts** (reusable templates for LLM interactions)
+- And more!
+
+There is a low-level [Python SDK](https://github.com/modelcontextprotocol/python-sdk) available for implementing the protocol directly, but FastMCP aims to make that easier by providing a high-level, Pythonic interface.
+
+## Core Concepts
+
+
+### Server
+
+The FastMCP server is your core interface to the MCP protocol. It handles connection management, protocol compliance, and message routing:
+
+```python
+from fastmcp import FastMCP
+
+# Create a named server
+mcp = FastMCP("My App")
+
+# Specify dependencies for deployment and development
+mcp = FastMCP("My App", dependencies=["pandas", "numpy"])
+```
+
+### Resources
+
+Resources are how you expose data to LLMs. They're similar to GET endpoints in a REST API - they provide data but shouldn't perform significant computation or have side effects. Some examples:
+
+- File contents
+- Database schemas
+- API responses
+- System information
+
+Resources can be static:
+```python
+@mcp.resource("config://app")
+def get_config() -> str:
+    """Static configuration data"""
+    return "App configuration here"
+```
+
+Or dynamic with parameters (FastMCP automatically handles these as MCP templates):
+```python
+@mcp.resource("users://{user_id}/profile")
+def get_user_profile(user_id: str) -> str:
+    """Dynamic user data"""
+    return f"Profile data for user {user_id}"
+```
+
+### Tools
+
+Tools let LLMs take actions through your server. Unlike resources, tools are expected to perform computation and have side effects. They're similar to POST endpoints in a REST API.
+
+Simple calculation example:
+```python
+@mcp.tool()
+def calculate_bmi(weight_kg: float, height_m: float) -> float:
+    """Calculate BMI given weight in kg and height in meters"""
+    return weight_kg / (height_m ** 2)
+```
+
+HTTP request example:
+```python
+import httpx
+
+@mcp.tool()
+async def fetch_weather(city: str) -> str:
+    """Fetch current weather for a city"""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.weather.com/{city}"
+        )
+        return response.text
+```
+
+Complex input handling example:
+```python
+from pydantic import BaseModel, Field
+from typing import Annotated
+
+class ShrimpTank(BaseModel):
+    class Shrimp(BaseModel):
+        name: Annotated[str, Field(max_length=10)]
+
+    shrimp: list[Shrimp]
+
+@mcp.tool()
+def name_shrimp(
+    tank: ShrimpTank,
+    # You can use pydantic Field in function signatures for validation.
+    extra_names: Annotated[list[str], Field(max_length=10)],
+) -> list[str]:
+    """List all shrimp names in the tank"""
+    return [shrimp.name for shrimp in tank.shrimp] + extra_names
+```
+
+### Prompts
+
+Prompts are reusable templates that help LLMs interact with your server effectively. They're like "best practices" encoded into your server. A prompt can be as simple as a string:
+
+```python
+@mcp.prompt()
+def review_code(code: str) -> str:
+    return f"Please review this code:\n\n{code}"
+```
+
+Or a more structured sequence of messages:
+```python
+from fastmcp.prompts.base import UserMessage, AssistantMessage
+
+@mcp.prompt()
+def debug_error(error: str) -> list[Message]:
+    return [
+        UserMessage("I'm seeing this error:"),
+        UserMessage(error),
+        AssistantMessage("I'll help debug that. What have you tried so far?")
+    ]
+```
+
+
+### Images
+
+FastMCP provides an `Image` class that automatically handles image data in your server:
+
+```python
+from fastmcp import FastMCP, Image
+from PIL import Image as PILImage
+
+@mcp.tool()
+def create_thumbnail(image_path: str) -> Image:
+    """Create a thumbnail from an image"""
+    img = PILImage.open(image_path)
+    img.thumbnail((100, 100))
+    
+    # FastMCP automatically handles conversion and MIME types
+    return Image(data=img.tobytes(), format="png")
+
+@mcp.tool()
+def load_image(path: str) -> Image:
+    """Load an image from disk"""
+    # FastMCP handles reading and format detection
+    return Image(path=path)
+```
+
+Images can be used as the result of both tools and resources.
+
+### Context
+
+The Context object gives your tools and resources access to MCP capabilities. To use it, add a parameter annotated with `fastmcp.Context`:
+
+```python
+from fastmcp import FastMCP, Context
+
+@mcp.tool()
+async def long_task(files: list[str], ctx: Context) -> str:
+    """Process multiple files with progress tracking"""
+    for i, file in enumerate(files):
+        ctx.info(f"Processing {file}")
+        await ctx.report_progress(i, len(files))
+        
+        # Read another resource if needed
+        data = await ctx.read_resource(f"file://{file}")
+        
+    return "Processing complete"
+```
+
+The Context object provides:
+- Progress reporting through `report_progress()`
+- Logging via `debug()`, `info()`, `warning()`, and `error()`
+- Resource access through `read_resource()`
+- Request metadata via `request_id` and `client_id`
+
+## Running Your Server
+
+There are three main ways to use your FastMCP server, each suited for different stages of development:
+
+### Development Mode (Recommended for Building & Testing)
+
+The fastest way to test and debug your server is with the MCP Inspector:
+
+```bash
+fastmcp dev server.py
+```
+
+This launches a web interface where you can:
+- Test your tools and resources interactively
+- See detailed logs and error messages
+- Monitor server performance
+- Set environment variables for testing
+
+During development, you can:
+- Add dependencies with `--with`: 
+  ```bash
+  fastmcp dev server.py --with pandas --with numpy
+  ```
+- Mount your local code for live updates:
+  ```bash
+  fastmcp dev server.py --with-editable .
+  ```
+
+### Claude Desktop Integration (For Regular Use)
+
+Once your server is ready, install it in Claude Desktop to use it with Claude:
+
+```bash
+fastmcp install server.py
+```
+
+Your server will run in an isolated environment with:
+- Automatic installation of dependencies specified in your FastMCP instance:
+  ```python
+  mcp = FastMCP("My App", dependencies=["pandas", "numpy"])
+  ```
+- Custom naming via `--name`:
+  ```bash
+  fastmcp install server.py --name "My Analytics Server"
+  ```
+- Environment variable management:
+  ```bash
+  # Set variables individually
+  fastmcp install server.py -e API_KEY=abc123 -e DB_URL=postgres://...
+  
+  # Or load from a .env file
+  fastmcp install server.py -f .env
+  ```
+
+### Direct Execution (For Advanced Use Cases)
+
+For advanced scenarios like custom deployments or running without Claude, you can execute your server directly:
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("My App")
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+Run it with:
+```bash
+# Using the FastMCP CLI
+fastmcp run server.py
+
+# Or with Python/uv directly
+python server.py
+uv run python server.py
+```
+
+
+Note: When running directly, you are responsible for ensuring all dependencies are available in your environment. Any dependencies specified on the FastMCP instance are ignored.
+
+Choose this method when you need:
+- Custom deployment configurations
+- Integration with other services
+- Direct control over the server lifecycle
+
+### Server Object Names
+
+All FastMCP commands will look for a server object called `mcp`, `app`, or `server` in your file. If you have a different object name or multiple servers in one file, use the syntax `server.py:my_server`:
+
+```bash
+# Using a standard name
+fastmcp run server.py
+
+# Using a custom name
+fastmcp run server.py:my_custom_server
+```
+
+## Examples
+
+Here are a few examples of FastMCP servers. For more, see the `examples/` directory.
+
+### Echo Server
+A simple server demonstrating resources, tools, and prompts:
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("Echo")
+
+@mcp.resource("echo://{message}")
+def echo_resource(message: str) -> str:
+    """Echo a message as a resource"""
+    return f"Resource echo: {message}"
+
+@mcp.tool()
+def echo_tool(message: str) -> str:
+    """Echo a message as a tool"""
+    return f"Tool echo: {message}"
+
+@mcp.prompt()
+def echo_prompt(message: str) -> str:
+    """Create an echo prompt"""
+    return f"Please process this message: {message}"
+```
+
+### SQLite Explorer
+A more complex example showing database integration:
+
+```python
+from fastmcp import FastMCP
+import sqlite3
+
+mcp = FastMCP("SQLite Explorer")
+
+@mcp.resource("schema://main")
+def get_schema() -> str:
+    """Provide the database schema as a resource"""
+    conn = sqlite3.connect("database.db")
+    schema = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table'"
+    ).fetchall()
+    return "\n".join(sql[0] for sql in schema if sql[0])
+
+@mcp.tool()
+def query_data(sql: str) -> str:
+    """Execute SQL queries safely"""
+    conn = sqlite3.connect("database.db")
+    try:
+        result = conn.execute(sql).fetchall()
+        return "\n".join(str(row) for row in result)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+@mcp.prompt()
+def analyze_table(table: str) -> str:
+    """Create a prompt template for analyzing tables"""
+    return f"""Please analyze this database table:
+Table: {table}
+Schema: 
+{get_schema()}
+
+What insights can you provide about the structure and relationships?"""
+```
+
+## Contributing
+
+<details>
+
+<summary><h3>Open Developer Guide</h3></summary>
+
+### Prerequisites
+
+FastMCP requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
+
+### Installation
+
+For development, we recommend installing FastMCP with development dependencies, which includes various utilities the maintainers find useful.
+
+```bash
+git clone https://github.com/jlowin/fastmcp.git
+cd fastmcp
+uv sync --frozen --extra dev
+```
+
+For running tests only (e.g., in CI), you only need the testing dependencies:
+
+```bash
+uv sync --frozen --extra tests
+```
+
+### Testing
+
+Please make sure to test any new functionality. Your tests should be simple and atomic and anticipate change rather than cement complex patterns.
+
+Run tests from the root directory:
+
+
+```bash
+pytest -vv
+```
+
+### Formatting
+
+FastMCP enforces a variety of required formats, which you can automatically enforce with pre-commit. 
+
+Install the pre-commit hooks:
+
+```bash
+pre-commit install
+```
+
+The hooks will now run on every commit (as well as on every PR). To run them manually:
+
+```bash
+pre-commit run --all-files
+```
+
+### Opening a Pull Request
+
+Fork the repository and create a new branch:
+
+```bash
+git checkout -b my-branch
+```
+
+Make your changes and commit them:
+
+
+```bash
+git add . && git commit -m "My changes"
+```
+
+Push your changes to your fork:
+
+
+```bash
+git push origin my-branch
+```
+
+Feel free to reach out in a GitHub issue or discussion if you have any questions!
+
+</details>
+
+
+================================================
+File: /examples/simple_echo.py
+================================================
+"""
+FastMCP Echo Server
+"""
+
+from fastmcp import FastMCP
+
+
+# Create server
+mcp = FastMCP("Echo Server")
+
+
+@mcp.tool()
+def echo(text: str) -> str:
+    """Echo the input text"""
+    return text
+
+
+================================================
+File: /examples/memory.py
+================================================
+# /// script
+# dependencies = ["pydantic-ai-slim[openai]", "asyncpg", "numpy", "pgvector", "fastmcp"]
+# ///
+
+# uv pip install 'pydantic-ai-slim[openai]' asyncpg numpy pgvector fastmcp
+
+"""
+Recursive memory system inspired by the human brain's clustering of memories.
+Uses OpenAI's 'text-embedding-3-small' model and pgvector for efficient similarity search.
+"""
+
+import asyncio
+import math
+import os
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Annotated, Self
+
+import asyncpg
+import numpy as np
+from openai import AsyncOpenAI
+from pgvector.asyncpg import register_vector  # Import register_vector
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+
+from fastmcp import FastMCP
+
+MAX_DEPTH = 5
+SIMILARITY_THRESHOLD = 0.7
+DECAY_FACTOR = 0.99
+REINFORCEMENT_FACTOR = 1.1
+
+DEFAULT_LLM_MODEL = "openai:gpt-4o"
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+
+mcp = FastMCP(
+    "memory",
+    dependencies=[
+        "pydantic-ai-slim[openai]",
+        "asyncpg",
+        "numpy",
+        "pgvector",
+    ],
+)
+
+DB_DSN = "postgresql://postgres:postgres@localhost:54320/memory_db"
+# reset memory with rm ~/.fastmcp/{USER}/memory/*
+PROFILE_DIR = (
+    Path.home() / ".fastmcp" / os.environ.get("USER", "anon") / "memory"
+).resolve()
+PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    a_array = np.array(a, dtype=np.float64)
+    b_array = np.array(b, dtype=np.float64)
+    return np.dot(a_array, b_array) / (
+        np.linalg.norm(a_array) * np.linalg.norm(b_array)
+    )
+
+
+async def do_ai[T](
+    user_prompt: str,
+    system_prompt: str,
+    result_type: type[T] | Annotated,
+    deps=None,
+) -> T:
+    agent = Agent(
+        DEFAULT_LLM_MODEL,
+        system_prompt=system_prompt,
+        result_type=result_type,
+    )
+    result = await agent.run(user_prompt, deps=deps)
+    return result.data
+
+
+@dataclass
+class Deps:
+    openai: AsyncOpenAI
+    pool: asyncpg.Pool
+
+
+async def get_db_pool() -> asyncpg.Pool:
+    async def init(conn):
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        await register_vector(conn)
+
+    pool = await asyncpg.create_pool(DB_DSN, init=init)
+    return pool
+
+
+class MemoryNode(BaseModel):
+    id: int | None = None
+    content: str
+    summary: str = ""
+    importance: float = 1.0
+    access_count: int = 0
+    timestamp: float = Field(
+        default_factory=lambda: datetime.now(timezone.utc).timestamp()
+    )
+    embedding: list[float]
+
+    @classmethod
+    async def from_content(cls, content: str, deps: Deps):
+        embedding = await get_embedding(content, deps)
+        return cls(content=content, embedding=embedding)
+
+    async def save(self, deps: Deps):
+        async with deps.pool.acquire() as conn:
+            if self.id is None:
+                result = await conn.fetchrow(
+                    """
+                    INSERT INTO memories (content, summary, importance, access_count, timestamp, embedding)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    RETURNING id
+                    """,
+                    self.content,
+                    self.summary,
+                    self.importance,
+                    self.access_count,
+                    self.timestamp,
+                    self.embedding,
+                )
+                self.id = result["id"]
+            else:
+                await conn.execute(
+                    """
+                    UPDATE memories
+                    SET content = $1, summary = $2, importance = $3,
+                        access_count = $4, timestamp = $5, embedding = $6
+                    WHERE id = $7
+                    """,
+                    self.content,
+                    self.summary,
+                    self.importance,
+                    self.access_count,
+                    self.timestamp,
+                    self.embedding,
+                    self.id,
+                )
+
+    async def merge_with(self, other: Self, deps: Deps):
+        self.content = await do_ai(
+            f"{self.content}\n\n{other.content}",
+            "Combine the following two texts into a single, coherent text.",
+            str,
+            deps,
+        )
+        self.importance += other.importance
+        self.access_count += other.access_count
+        self.embedding = [(a + b) / 2 for a, b in zip(self.embedding, other.embedding)]
+        self.summary = await do_ai(
+            self.content, "Summarize the following text concisely.", str, deps
+        )
+        await self.save(deps)
+        # Delete the merged node from the database
+        if other.id is not None:
+            await delete_memory(other.id, deps)
+
+    def get_effective_importance(self):
+        return self.importance * (1 + math.log(self.access_count + 1))
+
+
+async def get_embedding(text: str, deps: Deps) -> list[float]:
+    embedding_response = await deps.openai.embeddings.create(
+        input=text,
+        model=DEFAULT_EMBEDDING_MODEL,
+    )
+    return embedding_response.data[0].embedding
+
+
+async def delete_memory(memory_id: int, deps: Deps):
+    async with deps.pool.acquire() as conn:
+        await conn.execute("DELETE FROM memories WHERE id = $1", memory_id)
+
+
+async def add_memory(content: str, deps: Deps):
+    new_memory = await MemoryNode.from_content(content, deps)
+    await new_memory.save(deps)
+
+    similar_memories = await find_similar_memories(new_memory.embedding, deps)
+    for memory in similar_memories:
+        if memory.id != new_memory.id:
+            await new_memory.merge_with(memory, deps)
+
+    await update_importance(new_memory.embedding, deps)
+
+    await prune_memories(deps)
+
+    return f"Remembered: {content}"
+
+
+async def find_similar_memories(embedding: list[float], deps: Deps) -> list[MemoryNode]:
+    async with deps.pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, content, summary, importance, access_count, timestamp, embedding
+            FROM memories
+            ORDER BY embedding <-> $1
+            LIMIT 5
+            """,
+            embedding,
+        )
+    memories = [
+        MemoryNode(
+            id=row["id"],
+            content=row["content"],
+            summary=row["summary"],
+            importance=row["importance"],
+            access_count=row["access_count"],
+            timestamp=row["timestamp"],
+            embedding=row["embedding"],
+        )
+        for row in rows
+    ]
+    return memories
+
+
+async def update_importance(user_embedding: list[float], deps: Deps):
+    async with deps.pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, importance, access_count, embedding FROM memories"
+        )
+        for row in rows:
+            memory_embedding = row["embedding"]
+            similarity = cosine_similarity(user_embedding, memory_embedding)
+            if similarity > SIMILARITY_THRESHOLD:
+                new_importance = row["importance"] * REINFORCEMENT_FACTOR
+                new_access_count = row["access_count"] + 1
+            else:
+                new_importance = row["importance"] * DECAY_FACTOR
+                new_access_count = row["access_count"]
+            await conn.execute(
+                """
+                UPDATE memories
+                SET importance = $1, access_count = $2
+                WHERE id = $3
+                """,
+                new_importance,
+                new_access_count,
+                row["id"],
+            )
+
+
+async def prune_memories(deps: Deps):
+    async with deps.pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, importance, access_count
+            FROM memories
+            ORDER BY importance DESC
+            OFFSET $1
+            """,
+            MAX_DEPTH,
+        )
+        for row in rows:
+            await conn.execute("DELETE FROM memories WHERE id = $1", row["id"])
+
+
+async def display_memory_tree(deps: Deps) -> str:
+    async with deps.pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT content, summary, importance, access_count
+            FROM memories
+            ORDER BY importance DESC
+            LIMIT $1
+            """,
+            MAX_DEPTH,
+        )
+    result = ""
+    for row in rows:
+        effective_importance = row["importance"] * (
+            1 + math.log(row["access_count"] + 1)
+        )
+        summary = row["summary"] or row["content"]
+        result += f"- {summary} (Importance: {effective_importance:.2f})\n"
+    return result
+
+
+@mcp.tool()
+async def remember(
+    contents: list[str] = Field(
+        description="List of observations or memories to store"
+    ),
+):
+    deps = Deps(openai=AsyncOpenAI(), pool=await get_db_pool())
+    try:
+        return "\n".join(
+            await asyncio.gather(*[add_memory(content, deps) for content in contents])
+        )
+    finally:
+        await deps.pool.close()
+
+
+@mcp.tool()
+async def read_profile() -> str:
+    deps = Deps(openai=AsyncOpenAI(), pool=await get_db_pool())
+    profile = await display_memory_tree(deps)
+    await deps.pool.close()
+    return profile
+
+
+async def initialize_database():
+    pool = await asyncpg.create_pool(
+        "postgresql://postgres:postgres@localhost:54320/postgres"
+    )
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
+                FROM pg_stat_activity
+                WHERE pg_stat_activity.datname = 'memory_db'
+                AND pid <> pg_backend_pid();
+            """)
+            await conn.execute("DROP DATABASE IF EXISTS memory_db;")
+            await conn.execute("CREATE DATABASE memory_db;")
+    finally:
+        await pool.close()
+
+    pool = await asyncpg.create_pool(DB_DSN)
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+            await register_vector(conn)
+
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS memories (
+                    id SERIAL PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    summary TEXT,
+                    importance REAL NOT NULL,
+                    access_count INT NOT NULL,
+                    timestamp DOUBLE PRECISION NOT NULL,
+                    embedding vector(1536) NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_memories_embedding ON memories USING hnsw (embedding vector_l2_ops);
+            """)
+    finally:
+        await pool.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(initialize_database())
+
+
+================================================
+File: /examples/readme-quickstart.py
+================================================
+from fastmcp import FastMCP
+
+
+# Create an MCP server
+mcp = FastMCP("Demo")
+
+
+# Add an addition tool
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+
+# Add a dynamic greeting resource
+@mcp.resource("greeting://{name}")
+def get_greeting(name: str) -> str:
+    """Get a personalized greeting"""
+    return f"Hello, {name}!"
+
+
+================================================
+File: /examples/text_me.py
+================================================
+# /// script
+# dependencies = ["fastmcp"]
+# ///
+
+"""
+FastMCP Text Me Server
+--------------------------------
+This defines a simple FastMCP server that sends a text message to a phone number via https://surgemsg.com/.
+
+To run this example, create a `.env` file with the following values:
+
+SURGE_API_KEY=...
+SURGE_ACCOUNT_ID=...
+SURGE_MY_PHONE_NUMBER=...
+SURGE_MY_FIRST_NAME=...
+SURGE_MY_LAST_NAME=...
+
+Visit https://surgemsg.com/ and click "Get Started" to obtain these values.
+"""
+
+from typing import Annotated
+import httpx
+from pydantic import BeforeValidator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from fastmcp import FastMCP
+
+
+class SurgeSettings(BaseSettings):
+    model_config: SettingsConfigDict = SettingsConfigDict(
+        env_prefix="SURGE_", env_file=".env"
+    )
+
+    api_key: str
+    account_id: str
+    my_phone_number: Annotated[
+        str, BeforeValidator(lambda v: "+" + v if not v.startswith("+") else v)
+    ]
+    my_first_name: str
+    my_last_name: str
+
+
+# Create server
+mcp = FastMCP("Text me")
+surge_settings = SurgeSettings()  # type: ignore
+
+
+@mcp.tool(name="textme", description="Send a text message to me")
+def text_me(text_content: str) -> str:
+    """Send a text message to a phone number via https://surgemsg.com/"""
+    with httpx.Client() as client:
+        response = client.post(
+            "https://api.surgemsg.com/messages",
+            headers={
+                "Authorization": f"Bearer {surge_settings.api_key}",
+                "Surge-Account": surge_settings.account_id,
+                "Content-Type": "application/json",
+            },
+            json={
+                "body": text_content,
+                "conversation": {
+                    "contact": {
+                        "first_name": surge_settings.my_first_name,
+                        "last_name": surge_settings.my_last_name,
+                        "phone_number": surge_settings.my_phone_number,
+                    }
+                },
+            },
+        )
+        response.raise_for_status()
+        return f"Message sent: {text_content}"
+
+
+================================================
+File: /examples/screenshot.py
+================================================
+"""
+FastMCP Screenshot Example
+
+Give Claude a tool to capture and view screenshots.
+"""
+
+import io
+from fastmcp import FastMCP, Image
+
+
+# Create server
+mcp = FastMCP("Screenshot Demo", dependencies=["pyautogui", "Pillow"])
+
+
+@mcp.tool()
+def take_screenshot() -> Image:
+    """
+    Take a screenshot of the user's screen and return it as an image. Use
+    this tool anytime the user wants you to look at something they're doing.
+    """
+    import pyautogui
+
+    buffer = io.BytesIO()
+
+    # if the file exceeds ~1MB, it will be rejected by Claude
+    screenshot = pyautogui.screenshot()
+    screenshot.convert("RGB").save(buffer, format="JPEG", quality=60, optimize=True)
+    return Image(data=buffer.getvalue(), format="jpeg")
+
+
+================================================
+File: /examples/echo.py
+================================================
+"""
+FastMCP Echo Server
+"""
+
+from fastmcp import FastMCP
+
+# Create server
+mcp = FastMCP("Echo Server")
+
+
+@mcp.tool()
+def echo_tool(text: str) -> str:
+    """Echo the input text"""
+    return text
+
+
+@mcp.resource("echo://static")
+def echo_resource() -> str:
+    return "Echo!"
+
+
+@mcp.resource("echo://{text}")
+def echo_template(text: str) -> str:
+    """Echo the input text"""
+    return f"Echo: {text}"
+
+
+@mcp.prompt("echo")
+def echo_prompt(text: str) -> str:
+    return text
+
+
+================================================
+File: /examples/desktop.py
+================================================
+"""
+FastMCP Desktop Example
+
+A simple example that exposes the desktop directory as a resource.
+"""
+
+from pathlib import Path
+
+from fastmcp.server import FastMCP
+
+# Create server
+mcp = FastMCP("Demo")
+
+
+@mcp.resource("dir://desktop")
+def desktop() -> list[str]:
+    """List the files in the user's desktop"""
+    desktop = Path.home() / "Desktop"
+    return [str(f) for f in desktop.iterdir()]
+
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+
+================================================
+File: /examples/complex_inputs.py
+================================================
+"""
+FastMCP Complex inputs Example
+
+Demonstrates validation via pydantic with complex models.
+"""
+
+from pydantic import BaseModel, Field
+from typing import Annotated
+from fastmcp.server import FastMCP
+
+mcp = FastMCP("Shrimp Tank")
+
+
+class ShrimpTank(BaseModel):
+    class Shrimp(BaseModel):
+        name: Annotated[str, Field(max_length=10)]
+
+    shrimp: list[Shrimp]
+
+
+@mcp.tool()
+def name_shrimp(
+    tank: ShrimpTank,
+    # You can use pydantic Field in function signatures for validation.
+    extra_names: Annotated[list[str], Field(max_length=10)],
+) -> list[str]:
+    """List all shrimp names in the tank"""
+    return [shrimp.name for shrimp in tank.shrimp] + extra_names
+
+
+================================================
+File: /Windows_Notes.md
+================================================
+# Getting your development environment set up properly
+To get your environment up and running properly, you'll need a slightly different set of commands that are windows specific:
+```bash
+uv venv
+.venv\Scripts\activate
+uv pip install -e ".[dev]"
+```
+
+This will install the package in editable mode, and install the development dependencies.
+
+
+# Fixing `AttributeError: module 'collections' has no attribute 'Callable'`
+- open `.venv\Lib\site-packages\pyreadline\py3k_compat.py`
+- change `return isinstance(x, collections.Callable)` to 
+``` 
+from collections.abc import Callable
+return isinstance(x, Callable)
+```
+
+# Helpful notes
+For developing FastMCP
+## Install local development version of FastMCP into a local FastMCP project server
+- ensure
+- change directories to your FastMCP Server location so you can install it in your .venv
+- run `.venv\Scripts\activate` to activate your virtual environment
+- Then run a series of commands to uninstall the old version and install the new
+```bash
+# First uninstall
+uv pip uninstall fastmcp
+
+# Clean any build artifacts in your fastmcp directory
+cd C:\path\to\fastmcp
+del /s /q *.egg-info
+
+# Then reinstall in your weather project
+cd C:\path\to\new\fastmcp_server
+uv pip install --no-cache-dir -e C:\Users\justj\PycharmProjects\fastmcp
+
+# Check that it installed properly and has the correct git hash
+pip show fastmcp
+```
+
+## Running the FastMCP server with Inspector
+MCP comes with a node.js application called Inspector that can be used to inspect the FastMCP server. To run the inspector, you'll need to install node.js and npm. Then you can run the following commands:
+```bash
+fastmcp dev server.py
+```
+This will launch a web app on http://localhost:5173/ that you can use to inspect the FastMCP server.
+
+## If you start development before creating a fork - your get out of jail free card
+- Add your fork as a new remote to your local repository `git remote add fork git@github.com:YOUR-USERNAME/REPOSITORY-NAME.git`
+  - This will add your repo, short named 'fork', as a remote to your local repository
+- Verify that it was added correctly by running `git remote -v`
+- Commit your changes
+- Push your changes to your fork `git push fork <branch>`
+- Create your pull request on GitHub 
+
+
+
+
+================================================
+File: /src/fastmcp/server.py
+================================================
+"""FastMCP - A more ergonomic interface for MCP servers."""
+
+import asyncio
+import functools
+import inspect
+import json
+import re
+from itertools import chain
+from typing import Any, Callable, Dict, Literal, Sequence, TypeVar, ParamSpec
+
+import pydantic_core
+from pydantic import Field
+import uvicorn
+from mcp.server import Server as MCPServer
+from mcp.server.sse import SseServerTransport
+from mcp.server.stdio import stdio_server
+from mcp.shared.context import RequestContext
+from mcp.types import (
+    EmbeddedResource,
+    GetPromptResult,
+    ImageContent,
+    TextContent,
+)
+from mcp.types import (
+    Prompt as MCPPrompt,
+    PromptArgument as MCPPromptArgument,
+)
+from mcp.types import (
+    Resource as MCPResource,
+)
+from mcp.types import (
+    ResourceTemplate as MCPResourceTemplate,
+)
+from mcp.types import (
+    Tool as MCPTool,
+)
+from pydantic import BaseModel
+from pydantic.networks import AnyUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from fastmcp.exceptions import ResourceError
+from fastmcp.prompts import Prompt, PromptManager
+from fastmcp.prompts.base import PromptResult
+from fastmcp.resources import FunctionResource, Resource, ResourceManager
+from fastmcp.tools import ToolManager
+from fastmcp.utilities.logging import configure_logging, get_logger
+from fastmcp.utilities.types import Image
+
+logger = get_logger(__name__)
+
+P = ParamSpec("P")
+R = TypeVar("R")
+R_PromptResult = TypeVar("R_PromptResult", bound=PromptResult)
+
+
+class Settings(BaseSettings):
+    """FastMCP server settings.
+
+    All settings can be configured via environment variables with the prefix FASTMCP_.
+    For example, FASTMCP_DEBUG=true will set debug=True.
+    """
+
+    model_config: SettingsConfigDict = SettingsConfigDict(
+        env_prefix="FASTMCP_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    # Server settings
+    debug: bool = False
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    # HTTP settings
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+    # resource settings
+    warn_on_duplicate_resources: bool = True
+
+    # tool settings
+    warn_on_duplicate_tools: bool = True
+
+    # prompt settings
+    warn_on_duplicate_prompts: bool = True
+
+    dependencies: list[str] = Field(
+        default_factory=list,
+        description="List of dependencies to install in the server environment",
+    )
+
+
+class FastMCP:
+    def __init__(self, name: str | None = None, **settings: Any):
+        self.settings = Settings(**settings)
+        self._mcp_server = MCPServer(name=name or "FastMCP")
+        self._tool_manager = ToolManager(
+            warn_on_duplicate_tools=self.settings.warn_on_duplicate_tools
+        )
+        self._resource_manager = ResourceManager(
+            warn_on_duplicate_resources=self.settings.warn_on_duplicate_resources
+        )
+        self._prompt_manager = PromptManager(
+            warn_on_duplicate_prompts=self.settings.warn_on_duplicate_prompts
+        )
+        self.dependencies = self.settings.dependencies
+
+        # Set up MCP protocol handlers
+        self._setup_handlers()
+
+        # Configure logging
+        configure_logging(self.settings.log_level)
+
+    @property
+    def name(self) -> str:
+        return self._mcp_server.name
+
+    def run(self, transport: Literal["stdio", "sse"] = "stdio") -> None:
+        """Run the FastMCP server. Note this is a synchronous function.
+
+        Args:
+            transport: Transport protocol to use ("stdio" or "sse")
+        """
+        TRANSPORTS = Literal["stdio", "sse"]
+        if transport not in TRANSPORTS.__args__:  # type: ignore
+            raise ValueError(f"Unknown transport: {transport}")
+
+        if transport == "stdio":
+            asyncio.run(self.run_stdio_async())
+        else:  # transport == "sse"
+            asyncio.run(self.run_sse_async())
+
+    def _setup_handlers(self) -> None:
+        """Set up core MCP protocol handlers."""
+        self._mcp_server.list_tools()(self.list_tools)
+        self._mcp_server.call_tool()(self.call_tool)
+        self._mcp_server.list_resources()(self.list_resources)
+        self._mcp_server.read_resource()(self.read_resource)
+        self._mcp_server.list_prompts()(self.list_prompts)
+        self._mcp_server.get_prompt()(self.get_prompt)
+        # TODO: This has not been added to MCP yet, see https://github.com/jlowin/fastmcp/issues/10
+        # self._mcp_server.list_resource_templates()(self.list_resource_templates)
+
+    async def list_tools(self) -> list[MCPTool]:
+        """List all available tools."""
+        tools = self._tool_manager.list_tools()
+        return [
+            MCPTool(
+                name=info.name,
+                description=info.description,
+                inputSchema=info.parameters,
+            )
+            for info in tools
+        ]
+
+    def get_context(self) -> "Context":
+        """
+        Returns a Context object. Note that the context will only be valid
+        during a request; outside a request, most methods will error.
+        """
+        try:
+            request_context = self._mcp_server.request_context
+        except LookupError:
+            request_context = None
+        return Context(request_context=request_context, fastmcp=self)
+
+    async def call_tool(
+        self, name: str, arguments: dict
+    ) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+        """Call a tool by name with arguments."""
+        context = self.get_context()
+        result = await self._tool_manager.call_tool(name, arguments, context=context)
+        converted_result = _convert_to_content(result)
+        return converted_result
+
+    async def list_resources(self) -> list[MCPResource]:
+        """List all available resources."""
+
+        resources = self._resource_manager.list_resources()
+        return [
+            MCPResource(
+                uri=resource.uri,
+                name=resource.name or "",
+                description=resource.description,
+                mimeType=resource.mime_type,
+            )
+            for resource in resources
+        ]
+
+    async def list_resource_templates(self) -> list[MCPResourceTemplate]:
+        templates = self._resource_manager.list_templates()
+        return [
+            MCPResourceTemplate(
+                uriTemplate=template.uri_template,
+                name=template.name,
+                description=template.description,
+            )
+            for template in templates
+        ]
+
+    async def read_resource(self, uri: AnyUrl | str) -> str | bytes:
+        """Read a resource by URI."""
+        resource = await self._resource_manager.get_resource(uri)
+        if not resource:
+            raise ResourceError(f"Unknown resource: {uri}")
+
+        try:
+            return await resource.read()
+        except Exception as e:
+            logger.error(f"Error reading resource {uri}: {e}")
+            raise ResourceError(str(e))
+
+    def add_tool(
+        self,
+        fn: Callable,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> None:
+        """Add a tool to the server.
+
+        The tool function can optionally request a Context object by adding a parameter
+        with the Context type annotation. See the @tool decorator for examples.
+
+        Args:
+            fn: The function to register as a tool
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+        """
+        self._tool_manager.add_tool(fn, name=name, description=description)
+
+    def tool(
+        self, name: str | None = None, description: str | None = None
+    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        """Decorator to register a tool.
+
+        Tools can optionally request a Context object by adding a parameter with the Context type annotation.
+        The context provides access to MCP capabilities like logging, progress reporting, and resource access.
+
+        Args:
+            name: Optional name for the tool (defaults to function name)
+            description: Optional description of what the tool does
+
+        Example:
+            @server.tool()
+            def my_tool(x: int) -> str:
+                return str(x)
+
+            @server.tool()
+            def tool_with_context(x: int, ctx: Context) -> str:
+                ctx.info(f"Processing {x}")
+                return str(x)
+
+            @server.tool()
+            async def async_tool(x: int, context: Context) -> str:
+                await context.report_progress(50, 100)
+                return str(x)
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @tool decorator was used incorrectly. "
+                "Did you forget to call it? Use @tool() instead of @tool"
+            )
+
+        def decorator(fn: Callable[P, R]) -> Callable[P, R]:
+            self.add_tool(fn, name=name, description=description)
+            return fn
+
+        return decorator
+
+    def add_resource(self, resource: Resource) -> None:
+        """Add a resource to the server.
+
+        Args:
+            resource: A Resource instance to add
+        """
+        self._resource_manager.add_resource(resource)
+
+    def resource(
+        self,
+        uri: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        mime_type: str | None = None,
+    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        """Decorator to register a function as a resource.
+
+        The function will be called when the resource is read to generate its content.
+        The function can return:
+        - str for text content
+        - bytes for binary content
+        - other types will be converted to JSON
+
+        If the URI contains parameters (e.g. "resource://{param}") or the function
+        has parameters, it will be registered as a template resource.
+
+        Args:
+            uri: URI for the resource (e.g. "resource://my-resource" or "resource://{param}")
+            name: Optional name for the resource
+            description: Optional description of the resource
+            mime_type: Optional MIME type for the resource
+
+        Example:
+            @server.resource("resource://my-resource")
+            def get_data() -> str:
+                return "Hello, world!"
+
+            @server.resource("resource://{city}/weather")
+            def get_weather(city: str) -> str:
+                return f"Weather for {city}"
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(uri):
+            raise TypeError(
+                "The @resource decorator was used incorrectly. "
+                "Did you forget to call it? Use @resource('uri') instead of @resource"
+            )
+
+        def decorator(fn: Callable[P, R]) -> Callable[P, R]:
+            @functools.wraps(fn)
+            def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+                return fn(*args, **kwargs)
+
+            # Check if this should be a template
+            has_uri_params = "{" in uri and "}" in uri
+            has_func_params = bool(inspect.signature(fn).parameters)
+
+            if has_uri_params or has_func_params:
+                # Validate that URI params match function params
+                uri_params = set(re.findall(r"{(\w+)}", uri))
+                func_params = set(inspect.signature(fn).parameters.keys())
+
+                if uri_params != func_params:
+                    raise ValueError(
+                        f"Mismatch between URI parameters {uri_params} "
+                        f"and function parameters {func_params}"
+                    )
+
+                # Register as template
+                self._resource_manager.add_template(
+                    wrapper,
+                    uri_template=uri,
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                )
+            else:
+                # Register as regular resource
+                resource = FunctionResource(
+                    uri=AnyUrl(uri),
+                    name=name,
+                    description=description,
+                    mime_type=mime_type or "text/plain",
+                    fn=wrapper,
+                )
+                self.add_resource(resource)
+            return wrapper
+
+        return decorator
+
+    def add_prompt(self, prompt: Prompt) -> None:
+        """Add a prompt to the server.
+
+        Args:
+            prompt: A Prompt instance to add
+        """
+        self._prompt_manager.add_prompt(prompt)
+
+    def prompt(
+        self, name: str | None = None, description: str | None = None
+    ) -> Callable[[Callable[P, R_PromptResult]], Callable[P, R_PromptResult]]:
+        """Decorator to register a prompt.
+
+        Args:
+            name: Optional name for the prompt (defaults to function name)
+            description: Optional description of what the prompt does
+
+        Example:
+            @server.prompt()
+            def analyze_table(table_name: str) -> list[Message]:
+                schema = read_table_schema(table_name)
+                return [
+                    {
+                        "role": "user",
+                        "content": f"Analyze this schema:\n{schema}"
+                    }
+                ]
+
+            @server.prompt()
+            async def analyze_file(path: str) -> list[Message]:
+                content = await read_file(path)
+                return [
+                    {
+                        "role": "user",
+                        "content": {
+                            "type": "resource",
+                            "resource": {
+                                "uri": f"file://{path}",
+                                "text": content
+                            }
+                        }
+                    }
+                ]
+        """
+        # Check if user passed function directly instead of calling decorator
+        if callable(name):
+            raise TypeError(
+                "The @prompt decorator was used incorrectly. "
+                "Did you forget to call it? Use @prompt() instead of @prompt"
+            )
+
+        def decorator(func: Callable[P, R_PromptResult]) -> Callable[P, R_PromptResult]:
+            prompt = Prompt.from_function(func, name=name, description=description)
+            self.add_prompt(prompt)
+            return func
+
+        return decorator
+
+    async def run_stdio_async(self) -> None:
+        """Run the server using stdio transport."""
+        async with stdio_server() as (read_stream, write_stream):
+            await self._mcp_server.run(
+                read_stream,
+                write_stream,
+                self._mcp_server.create_initialization_options(),
+            )
+
+    async def run_sse_async(self) -> None:
+        """Run the server using SSE transport."""
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+
+        sse = SseServerTransport("/messages")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await self._mcp_server.run(
+                    streams[0],
+                    streams[1],
+                    self._mcp_server.create_initialization_options(),
+                )
+
+        async def handle_messages(request):
+            await sse.handle_post_message(request.scope, request.receive, request._send)
+
+        starlette_app = Starlette(
+            debug=self.settings.debug,
+            routes=[
+                Route("/sse", endpoint=handle_sse),
+                Route("/messages", endpoint=handle_messages, methods=["POST"]),
+            ],
+        )
+
+        config = uvicorn.Config(
+            starlette_app,
+            host=self.settings.host,
+            port=self.settings.port,
+            log_level=self.settings.log_level.lower(),
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    async def list_prompts(self) -> list[MCPPrompt]:
+        """List all available prompts."""
+        prompts = self._prompt_manager.list_prompts()
+        return [
+            MCPPrompt(
+                name=prompt.name,
+                description=prompt.description,
+                arguments=[
+                    MCPPromptArgument(
+                        name=arg.name,
+                        description=arg.description,
+                        required=arg.required,
+                    )
+                    for arg in (prompt.arguments or [])
+                ],
+            )
+            for prompt in prompts
+        ]
+
+    async def get_prompt(
+        self, name: str, arguments: Dict[str, Any] | None = None
+    ) -> GetPromptResult:
+        """Get a prompt by name with arguments."""
+        try:
+            messages = await self._prompt_manager.render_prompt(name, arguments)
+
+            return GetPromptResult(messages=pydantic_core.to_jsonable_python(messages))
+        except Exception as e:
+            logger.error(f"Error getting prompt {name}: {e}")
+            raise ValueError(str(e))
+
+
+def _convert_to_content(
+    result: Any,
+) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+    """Convert a result to a sequence of content objects."""
+    if result is None:
+        return []
+
+    if isinstance(result, (TextContent, ImageContent, EmbeddedResource)):
+        return [result]
+
+    if isinstance(result, Image):
+        return [result.to_image_content()]
+
+    if isinstance(result, (list, tuple)):
+        return list(chain.from_iterable(_convert_to_content(item) for item in result))
+
+    if not isinstance(result, str):
+        try:
+            result = json.dumps(pydantic_core.to_jsonable_python(result))
+        except Exception:
+            result = str(result)
+
+    return [TextContent(type="text", text=result)]
+
+
+class Context(BaseModel):
+    """Context object providing access to MCP capabilities.
+
+    This provides a cleaner interface to MCP's RequestContext functionality.
+    It gets injected into tool and resource functions that request it via type hints.
+
+    To use context in a tool function, add a parameter with the Context type annotation:
+
+    ```python
+    @server.tool()
+    def my_tool(x: int, ctx: Context) -> str:
+        # Log messages to the client
+        ctx.info(f"Processing {x}")
+        ctx.debug("Debug info")
+        ctx.warning("Warning message")
+        ctx.error("Error message")
+
+        # Report progress
+        ctx.report_progress(50, 100)
+
+        # Access resources
+        data = ctx.read_resource("resource://data")
+
+        # Get request info
+        request_id = ctx.request_id
+        client_id = ctx.client_id
+
+        return str(x)
+    ```
+
+    The context parameter name can be anything as long as it's annotated with Context.
+    The context is optional - tools that don't need it can omit the parameter.
+    """
+
+    _request_context: RequestContext | None
+    _fastmcp: FastMCP | None
+
+    def __init__(
+        self,
+        *,
+        request_context: RequestContext | None = None,
+        fastmcp: FastMCP | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
+        self._request_context = request_context
+        self._fastmcp = fastmcp
+
+    @property
+    def fastmcp(self) -> FastMCP:
+        """Access to the FastMCP server."""
+        if self._fastmcp is None:
+            raise ValueError("Context is not available outside of a request")
+        return self._fastmcp
+
+    @property
+    def request_context(self) -> RequestContext:
+        """Access to the underlying request context."""
+        if self._request_context is None:
+            raise ValueError("Context is not available outside of a request")
+        return self._request_context
+
+    async def report_progress(
+        self, progress: float, total: float | None = None
+    ) -> None:
+        """Report progress for the current operation.
+
+        Args:
+            progress: Current progress value e.g. 24
+            total: Optional total value e.g. 100
+        """
+
+        progress_token = (
+            self.request_context.meta.progressToken
+            if self.request_context.meta
+            else None
+        )
+
+        if not progress_token:
+            return
+
+        await self.request_context.session.send_progress_notification(
+            progress_token=progress_token, progress=progress, total=total
+        )
+
+    async def read_resource(self, uri: str | AnyUrl) -> str | bytes:
+        """Read a resource by URI.
+
+        Args:
+            uri: Resource URI to read
+
+        Returns:
+            The resource content as either text or bytes
+        """
+        assert (
+            self._fastmcp is not None
+        ), "Context is not available outside of a request"
+        return await self._fastmcp.read_resource(uri)
+
+    def log(
+        self,
+        level: Literal["debug", "info", "warning", "error"],
+        message: str,
+        *,
+        logger_name: str | None = None,
+    ) -> None:
+        """Send a log message to the client.
+
+        Args:
+            level: Log level (debug, info, warning, error)
+            message: Log message
+            logger_name: Optional logger name
+            **extra: Additional structured data to include
+        """
+        self.request_context.session.send_log_message(
+            level=level, data=message, logger=logger_name
+        )
+
+    @property
+    def client_id(self) -> str | None:
+        """Get the client ID if available."""
+        return (
+            getattr(self.request_context.meta, "client_id", None)
+            if self.request_context.meta
+            else None
+        )
+
+    @property
+    def request_id(self) -> str:
+        """Get the unique ID for this request."""
+        return str(self.request_context.request_id)
+
+    @property
+    def session(self):
+        """Access to the underlying session for advanced usage."""
+        return self.request_context.session
+
+    # Convenience methods for common log levels
+    def debug(self, message: str, **extra: Any) -> None:
+        """Send a debug log message."""
+        self.log("debug", message, **extra)
+
+    def info(self, message: str, **extra: Any) -> None:
+        """Send an info log message."""
+        self.log("info", message, **extra)
+
+    def warning(self, message: str, **extra: Any) -> None:
+        """Send a warning log message."""
+        self.log("warning", message, **extra)
+
+    def error(self, message: str, **extra: Any) -> None:
+        """Send an error log message."""
+        self.log("error", message, **extra)
+
+
+================================================
+File: /src/fastmcp/tools/tool_manager.py
+================================================
+from fastmcp.exceptions import ToolError
+
+from fastmcp.tools.base import Tool
+
+
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+
+from fastmcp.utilities.logging import get_logger
+
+if TYPE_CHECKING:
+    from fastmcp.server import Context
+
+logger = get_logger(__name__)
+
+
+class ToolManager:
+    """Manages FastMCP tools."""
+
+    def __init__(self, warn_on_duplicate_tools: bool = True):
+        self._tools: Dict[str, Tool] = {}
+        self.warn_on_duplicate_tools = warn_on_duplicate_tools
+
+    def get_tool(self, name: str) -> Optional[Tool]:
+        """Get tool by name."""
+        return self._tools.get(name)
+
+    def list_tools(self) -> list[Tool]:
+        """List all registered tools."""
+        return list(self._tools.values())
+
+    def add_tool(
+        self,
+        fn: Callable,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Tool:
+        """Add a tool to the server."""
+        tool = Tool.from_function(fn, name=name, description=description)
+        existing = self._tools.get(tool.name)
+        if existing:
+            if self.warn_on_duplicate_tools:
+                logger.warning(f"Tool already exists: {tool.name}")
+            return existing
+        self._tools[tool.name] = tool
+        return tool
+
+    async def call_tool(
+        self, name: str, arguments: dict, context: Optional["Context"] = None
+    ) -> Any:
+        """Call a tool by name with arguments."""
+        tool = self.get_tool(name)
+        if not tool:
+            raise ToolError(f"Unknown tool: {name}")
+
+        return await tool.run(arguments, context=context)
+
+
+================================================
+File: /src/fastmcp/tools/__init__.py
+================================================
+from .base import Tool
+from .tool_manager import ToolManager
+
+__all__ = ["Tool", "ToolManager"]
+
+
+================================================
+File: /src/fastmcp/tools/base.py
+================================================
+import fastmcp
+from fastmcp.exceptions import ToolError
+
+from fastmcp.utilities.func_metadata import func_metadata, FuncMetadata
+from pydantic import BaseModel, Field
+
+
+import inspect
+from typing import TYPE_CHECKING, Any, Callable, Optional
+
+if TYPE_CHECKING:
+    from fastmcp.server import Context
+
+
+class Tool(BaseModel):
+    """Internal tool registration info."""
+
+    fn: Callable = Field(exclude=True)
+    name: str = Field(description="Name of the tool")
+    description: str = Field(description="Description of what the tool does")
+    parameters: dict = Field(description="JSON schema for tool parameters")
+    fn_metadata: FuncMetadata = Field(
+        description="Metadata about the function including a pydantic model for tool arguments"
+    )
+    is_async: bool = Field(description="Whether the tool is async")
+    context_kwarg: Optional[str] = Field(
+        None, description="Name of the kwarg that should receive context"
+    )
+
+    @classmethod
+    def from_function(
+        cls,
+        fn: Callable,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        context_kwarg: Optional[str] = None,
+    ) -> "Tool":
+        """Create a Tool from a function."""
+        func_name = name or fn.__name__
+
+        if func_name == "<lambda>":
+            raise ValueError("You must provide a name for lambda functions")
+
+        func_doc = description or fn.__doc__ or ""
+        is_async = inspect.iscoroutinefunction(fn)
+
+        # Find context parameter if it exists
+        if context_kwarg is None:
+            sig = inspect.signature(fn)
+            for param_name, param in sig.parameters.items():
+                if param.annotation is fastmcp.Context:
+                    context_kwarg = param_name
+                    break
+
+        func_arg_metadata = func_metadata(
+            fn,
+            skip_names=[context_kwarg] if context_kwarg is not None else [],
+        )
+        parameters = func_arg_metadata.arg_model.model_json_schema()
+
+        return cls(
+            fn=fn,
+            name=func_name,
+            description=func_doc,
+            parameters=parameters,
+            fn_metadata=func_arg_metadata,
+            is_async=is_async,
+            context_kwarg=context_kwarg,
+        )
+
+    async def run(self, arguments: dict, context: Optional["Context"] = None) -> Any:
+        """Run the tool with arguments."""
+        try:
+            return await self.fn_metadata.call_fn_with_arg_validation(
+                self.fn,
+                self.is_async,
+                arguments,
+                {self.context_kwarg: context}
+                if self.context_kwarg is not None
+                else None,
+            )
+        except Exception as e:
+            raise ToolError(f"Error executing tool {self.name}: {e}") from e
+
+
+================================================
+File: /src/fastmcp/resources/resource_manager.py
+================================================
+"""Resource manager functionality."""
+
+from typing import Callable, Dict, Optional, Union
+
+from pydantic import AnyUrl
+
+from fastmcp.resources.base import Resource
+from fastmcp.resources.templates import ResourceTemplate
+from fastmcp.utilities.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class ResourceManager:
+    """Manages FastMCP resources."""
+
+    def __init__(self, warn_on_duplicate_resources: bool = True):
+        self._resources: Dict[str, Resource] = {}
+        self._templates: Dict[str, ResourceTemplate] = {}
+        self.warn_on_duplicate_resources = warn_on_duplicate_resources
+
+    def add_resource(self, resource: Resource) -> Resource:
+        """Add a resource to the manager.
+
+        Args:
+            resource: A Resource instance to add
+
+        Returns:
+            The added resource. If a resource with the same URI already exists,
+            returns the existing resource.
+        """
+        logger.debug(
+            "Adding resource",
+            extra={
+                "uri": resource.uri,
+                "type": type(resource).__name__,
+                "name": resource.name,
+            },
+        )
+        existing = self._resources.get(str(resource.uri))
+        if existing:
+            if self.warn_on_duplicate_resources:
+                logger.warning(f"Resource already exists: {resource.uri}")
+            return existing
+        self._resources[str(resource.uri)] = resource
+        return resource
+
+    def add_template(
+        self,
+        fn: Callable,
+        uri_template: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        mime_type: Optional[str] = None,
+    ) -> ResourceTemplate:
+        """Add a template from a function."""
+        template = ResourceTemplate.from_function(
+            fn,
+            uri_template=uri_template,
+            name=name,
+            description=description,
+            mime_type=mime_type,
+        )
+        self._templates[template.uri_template] = template
+        return template
+
+    async def get_resource(self, uri: Union[AnyUrl, str]) -> Optional[Resource]:
+        """Get resource by URI, checking concrete resources first, then templates."""
+        uri_str = str(uri)
+        logger.debug("Getting resource", extra={"uri": uri_str})
+
+        # First check concrete resources
+        if resource := self._resources.get(uri_str):
+            return resource
+
+        # Then check templates
+        for template in self._templates.values():
+            if params := template.matches(uri_str):
+                try:
+                    return await template.create_resource(uri_str, params)
+                except Exception as e:
+                    raise ValueError(f"Error creating resource from template: {e}")
+
+        raise ValueError(f"Unknown resource: {uri}")
+
+    def list_resources(self) -> list[Resource]:
+        """List all registered resources."""
+        logger.debug("Listing resources", extra={"count": len(self._resources)})
+        return list(self._resources.values())
+
+    def list_templates(self) -> list[ResourceTemplate]:
+        """List all registered templates."""
+        logger.debug("Listing templates", extra={"count": len(self._templates)})
+        return list(self._templates.values())
+
+
+================================================
+File: /src/fastmcp/resources/__init__.py
+================================================
+from .base import Resource
+from .types import (
+    TextResource,
+    BinaryResource,
+    FunctionResource,
+    FileResource,
+    HttpResource,
+    DirectoryResource,
+)
+from .templates import ResourceTemplate
+from .resource_manager import ResourceManager
+
+__all__ = [
+    "Resource",
+    "TextResource",
+    "BinaryResource",
+    "FunctionResource",
+    "FileResource",
+    "HttpResource",
+    "DirectoryResource",
+    "ResourceTemplate",
+    "ResourceManager",
+]
+
+
+================================================
+File: /src/fastmcp/resources/types.py
+================================================
+"""Concrete resource implementations."""
+
+import asyncio
+import json
+from pathlib import Path
+from typing import Any, Callable, Union
+
+import httpx
+import pydantic.json
+import pydantic_core
+from pydantic import Field, ValidationInfo
+
+from fastmcp.resources.base import Resource
+
+
+class TextResource(Resource):
+    """A resource that reads from a string."""
+
+    text: str = Field(description="Text content of the resource")
+
+    async def read(self) -> str:
+        """Read the text content."""
+        return self.text
+
+
+class BinaryResource(Resource):
+    """A resource that reads from bytes."""
+
+    data: bytes = Field(description="Binary content of the resource")
+
+    async def read(self) -> bytes:
+        """Read the binary content."""
+        return self.data
+
+
+class FunctionResource(Resource):
+    """A resource that defers data loading by wrapping a function.
+
+    The function is only called when the resource is read, allowing for lazy loading
+    of potentially expensive data. This is particularly useful when listing resources,
+    as the function won't be called until the resource is actually accessed.
+
+    The function can return:
+    - str for text content (default)
+    - bytes for binary content
+    - other types will be converted to JSON
+    """
+
+    fn: Callable[[], Any] = Field(exclude=True)
+
+    async def read(self) -> Union[str, bytes]:
+        """Read the resource by calling the wrapped function."""
+        try:
+            result = self.fn()
+            if isinstance(result, Resource):
+                return await result.read()
+            if isinstance(result, bytes):
+                return result
+            if isinstance(result, str):
+                return result
+            try:
+                return json.dumps(pydantic_core.to_jsonable_python(result))
+            except (TypeError, pydantic_core.PydanticSerializationError):
+                # If JSON serialization fails, try str()
+                return str(result)
+        except Exception as e:
+            raise ValueError(f"Error reading resource {self.uri}: {e}")
+
+
+class FileResource(Resource):
+    """A resource that reads from a file.
+
+    Set is_binary=True to read file as binary data instead of text.
+    """
+
+    path: Path = Field(description="Path to the file")
+    is_binary: bool = Field(
+        default=False,
+        description="Whether to read the file as binary data",
+    )
+    mime_type: str = Field(
+        default="text/plain",
+        description="MIME type of the resource content",
+    )
+
+    @pydantic.field_validator("path")
+    @classmethod
+    def validate_absolute_path(cls, path: Path) -> Path:
+        """Ensure path is absolute."""
+        if not path.is_absolute():
+            raise ValueError("Path must be absolute")
+        return path
+
+    @pydantic.field_validator("is_binary")
+    @classmethod
+    def set_binary_from_mime_type(cls, is_binary: bool, info: ValidationInfo) -> bool:
+        """Set is_binary based on mime_type if not explicitly set."""
+        if is_binary:
+            return True
+        mime_type = info.data.get("mime_type", "text/plain")
+        return not mime_type.startswith("text/")
+
+    async def read(self) -> Union[str, bytes]:
+        """Read the file content."""
+        try:
+            if self.is_binary:
+                return await asyncio.to_thread(self.path.read_bytes)
+            return await asyncio.to_thread(self.path.read_text)
+        except Exception as e:
+            raise ValueError(f"Error reading file {self.path}: {e}")
+
+
+class HttpResource(Resource):
+    """A resource that reads from an HTTP endpoint."""
+
+    url: str = Field(description="URL to fetch content from")
+    mime_type: str | None = Field(
+        default="application/json", description="MIME type of the resource content"
+    )
+
+    async def read(self) -> Union[str, bytes]:
+        """Read the HTTP content."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(self.url)
+            response.raise_for_status()
+            return response.text
+
+
+class DirectoryResource(Resource):
+    """A resource that lists files in a directory."""
+
+    path: Path = Field(description="Path to the directory")
+    recursive: bool = Field(
+        default=False, description="Whether to list files recursively"
+    )
+    pattern: str | None = Field(
+        default=None, description="Optional glob pattern to filter files"
+    )
+    mime_type: str | None = Field(
+        default="application/json", description="MIME type of the resource content"
+    )
+
+    @pydantic.field_validator("path")
+    @classmethod
+    def validate_absolute_path(cls, path: Path) -> Path:
+        """Ensure path is absolute."""
+        if not path.is_absolute():
+            raise ValueError("Path must be absolute")
+        return path
+
+    def list_files(self) -> list[Path]:
+        """List files in the directory."""
+        if not self.path.exists():
+            raise FileNotFoundError(f"Directory not found: {self.path}")
+        if not self.path.is_dir():
+            raise NotADirectoryError(f"Not a directory: {self.path}")
+
+        try:
+            if self.pattern:
+                return (
+                    list(self.path.glob(self.pattern))
+                    if not self.recursive
+                    else list(self.path.rglob(self.pattern))
+                )
+            return (
+                list(self.path.glob("*"))
+                if not self.recursive
+                else list(self.path.rglob("*"))
+            )
+        except Exception as e:
+            raise ValueError(f"Error listing directory {self.path}: {e}")
+
+    async def read(self) -> str:  # Always returns JSON string
+        """Read the directory listing."""
+        try:
+            files = await asyncio.to_thread(self.list_files)
+            file_list = [str(f.relative_to(self.path)) for f in files if f.is_file()]
+            return json.dumps({"files": file_list}, indent=2)
+        except Exception as e:
+            raise ValueError(f"Error reading directory {self.path}: {e}")
+
+
+================================================
+File: /src/fastmcp/resources/templates.py
+================================================
+"""Resource template functionality."""
+
+import inspect
+import re
+from typing import Any, Callable, Dict, Optional
+
+from pydantic import BaseModel, Field, TypeAdapter, validate_call
+
+from fastmcp.resources.types import FunctionResource, Resource
+
+
+class ResourceTemplate(BaseModel):
+    """A template for dynamically creating resources."""
+
+    uri_template: str = Field(
+        description="URI template with parameters (e.g. weather://{city}/current)"
+    )
+    name: str = Field(description="Name of the resource")
+    description: str | None = Field(description="Description of what the resource does")
+    mime_type: str = Field(
+        default="text/plain", description="MIME type of the resource content"
+    )
+    fn: Callable = Field(exclude=True)
+    parameters: dict = Field(description="JSON schema for function parameters")
+
+    @classmethod
+    def from_function(
+        cls,
+        fn: Callable,
+        uri_template: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        mime_type: Optional[str] = None,
+    ) -> "ResourceTemplate":
+        """Create a template from a function."""
+        func_name = name or fn.__name__
+        if func_name == "<lambda>":
+            raise ValueError("You must provide a name for lambda functions")
+
+        # Get schema from TypeAdapter - will fail if function isn't properly typed
+        parameters = TypeAdapter(fn).json_schema()
+
+        # ensure the arguments are properly cast
+        fn = validate_call(fn)
+
+        return cls(
+            uri_template=uri_template,
+            name=func_name,
+            description=description or fn.__doc__ or "",
+            mime_type=mime_type or "text/plain",
+            fn=fn,
+            parameters=parameters,
+        )
+
+    def matches(self, uri: str) -> Optional[Dict[str, Any]]:
+        """Check if URI matches template and extract parameters."""
+        # Convert template to regex pattern
+        pattern = self.uri_template.replace("{", "(?P<").replace("}", ">[^/]+)")
+        match = re.match(f"^{pattern}$", uri)
+        if match:
+            return match.groupdict()
+        return None
+
+    async def create_resource(self, uri: str, params: Dict[str, Any]) -> Resource:
+        """Create a resource from the template with the given parameters."""
+        try:
+            # Call function and check if result is a coroutine
+            result = self.fn(**params)
+            if inspect.iscoroutine(result):
+                result = await result
+
+            return FunctionResource(
+                uri=uri,  # type: ignore
+                name=self.name,
+                description=self.description,
+                mime_type=self.mime_type,
+                fn=lambda: result,  # Capture result in closure
+            )
+        except Exception as e:
+            raise ValueError(f"Error creating resource from template: {e}")
+
+
+================================================
+File: /src/fastmcp/resources/base.py
+================================================
+"""Base classes and interfaces for FastMCP resources."""
+
+import abc
+from typing import Union, Annotated
+
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    UrlConstraints,
+    ValidationInfo,
+    field_validator,
+)
+
+
+class Resource(BaseModel, abc.ABC):
+    """Base class for all resources."""
+
+    model_config = ConfigDict(validate_default=True)
+
+    uri: Annotated[AnyUrl, UrlConstraints(host_required=False)] = Field(
+        default=..., description="URI of the resource"
+    )
+    name: str | None = Field(description="Name of the resource", default=None)
+    description: str | None = Field(
+        description="Description of the resource", default=None
+    )
+    mime_type: str = Field(
+        default="text/plain",
+        description="MIME type of the resource content",
+        pattern=r"^[a-zA-Z0-9]+/[a-zA-Z0-9\-+.]+$",
+    )
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def set_default_name(cls, name: str | None, info: ValidationInfo) -> str:
+        """Set default name from URI if not provided."""
+        if name:
+            return name
+        if uri := info.data.get("uri"):
+            return str(uri)
+        raise ValueError("Either name or uri must be provided")
+
+    @abc.abstractmethod
+    async def read(self) -> Union[str, bytes]:
+        """Read the resource content."""
+        pass
+
+
+================================================
+File: /src/fastmcp/__init__.py
+================================================
+"""FastMCP - A more ergonomic interface for MCP servers."""
+
+from importlib.metadata import version
+from .server import FastMCP, Context
+from .utilities.types import Image
+
+__version__ = version("fastmcp")
+__all__ = ["FastMCP", "Context", "Image"]
+
+
+================================================
+File: /src/fastmcp/cli/claude.py
+================================================
+"""Claude app integration utilities."""
+
+import json
+import sys
+from pathlib import Path
+from typing import Optional, Dict
+
+from ..utilities.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+def get_claude_config_path() -> Path | None:
+    """Get the Claude config directory based on platform."""
+    if sys.platform == "win32":
+        path = Path(Path.home(), "AppData", "Roaming", "Claude")
+    elif sys.platform == "darwin":
+        path = Path(Path.home(), "Library", "Application Support", "Claude")
+    else:
+        return None
+
+    if path.exists():
+        return path
+    return None
+
+
+def update_claude_config(
+    file_spec: str,
+    server_name: str,
+    *,
+    with_editable: Optional[Path] = None,
+    with_packages: Optional[list[str]] = None,
+    env_vars: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Add or update a FastMCP server in Claude's configuration.
+
+    Args:
+        file_spec: Path to the server file, optionally with :object suffix
+        server_name: Name for the server in Claude's config
+        with_editable: Optional directory to install in editable mode
+        with_packages: Optional list of additional packages to install
+        env_vars: Optional dictionary of environment variables. These are merged with
+            any existing variables, with new values taking precedence.
+
+    Raises:
+        RuntimeError: If Claude Desktop's config directory is not found, indicating
+            Claude Desktop may not be installed or properly set up.
+    """
+    config_dir = get_claude_config_path()
+    if not config_dir:
+        raise RuntimeError(
+            "Claude Desktop config directory not found. Please ensure Claude Desktop "
+            "is installed and has been run at least once to initialize its configuration."
+        )
+
+    config_file = config_dir / "claude_desktop_config.json"
+    if not config_file.exists():
+        try:
+            config_file.write_text("{}")
+        except Exception as e:
+            logger.error(
+                "Failed to create Claude config file",
+                extra={
+                    "error": str(e),
+                    "config_file": str(config_file),
+                },
+            )
+            return False
+
+    try:
+        config = json.loads(config_file.read_text())
+        if "mcpServers" not in config:
+            config["mcpServers"] = {}
+
+        # Always preserve existing env vars and merge with new ones
+        if (
+            server_name in config["mcpServers"]
+            and "env" in config["mcpServers"][server_name]
+        ):
+            existing_env = config["mcpServers"][server_name]["env"]
+            if env_vars:
+                # New vars take precedence over existing ones
+                env_vars = {**existing_env, **env_vars}
+            else:
+                env_vars = existing_env
+
+        # Build uv run command
+        args = ["run"]
+
+        # Collect all packages in a set to deduplicate
+        packages = {"fastmcp"}
+        if with_packages:
+            packages.update(pkg for pkg in with_packages if pkg)
+
+        # Add all packages with --with
+        for pkg in sorted(packages):
+            args.extend(["--with", pkg])
+
+        if with_editable:
+            args.extend(["--with-editable", str(with_editable)])
+
+        # Convert file path to absolute before adding to command
+        # Split off any :object suffix first
+        if ":" in file_spec:
+            file_path, server_object = file_spec.rsplit(":", 1)
+            file_spec = f"{Path(file_path).resolve()}:{server_object}"
+        else:
+            file_spec = str(Path(file_spec).resolve())
+
+        # Add fastmcp run command
+        args.extend(["fastmcp", "run", file_spec])
+
+        server_config = {
+            "command": "uv",
+            "args": args,
+        }
+
+        # Add environment variables if specified
+        if env_vars:
+            server_config["env"] = env_vars
+
+        config["mcpServers"][server_name] = server_config
+
+        config_file.write_text(json.dumps(config, indent=2))
+        logger.info(
+            f"Added server '{server_name}' to Claude config",
+            extra={"config_file": str(config_file)},
+        )
+        return True
+    except Exception as e:
+        logger.error(
+            "Failed to update Claude config",
+            extra={
+                "error": str(e),
+                "config_file": str(config_file),
+            },
+        )
+        return False
+
+
+================================================
+File: /src/fastmcp/cli/__init__.py
+================================================
+"""FastMCP CLI package."""
+
+from .cli import app
+
+
+if __name__ == "__main__":
+    app()
+
+
+================================================
+File: /src/fastmcp/cli/cli.py
+================================================
+"""FastMCP CLI tools."""
+
+import importlib.metadata
+import importlib.util
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+import dotenv
+import typer
+from typing_extensions import Annotated
+
+from fastmcp.cli import claude
+from fastmcp.utilities.logging import get_logger
+
+logger = get_logger("cli")
+
+app = typer.Typer(
+    name="fastmcp",
+    help="FastMCP development tools",
+    add_completion=False,
+    no_args_is_help=True,  # Show help if no args provided
+)
+
+
+def _get_npx_command():
+    """Get the correct npx command for the current platform."""
+    if sys.platform == "win32":
+        # Try both npx.cmd and npx.exe on Windows
+        for cmd in ["npx.cmd", "npx.exe", "npx"]:
+            try:
+                subprocess.run(
+                    [cmd, "--version"], check=True, capture_output=True, shell=True
+                )
+                return cmd
+            except subprocess.CalledProcessError:
+                continue
+        return None
+    return "npx"  # On Unix-like systems, just use npx
+
+
+def _parse_env_var(env_var: str) -> Tuple[str, str]:
+    """Parse environment variable string in format KEY=VALUE."""
+    if "=" not in env_var:
+        logger.error(
+            f"Invalid environment variable format: {env_var}. Must be KEY=VALUE"
+        )
+        sys.exit(1)
+    key, value = env_var.split("=", 1)
+    return key.strip(), value.strip()
+
+
+def _build_uv_command(
+    file_spec: str,
+    with_editable: Optional[Path] = None,
+    with_packages: Optional[list[str]] = None,
+) -> list[str]:
+    """Build the uv run command that runs a FastMCP server through fastmcp run."""
+    cmd = ["uv"]
+
+    cmd.extend(["run", "--with", "fastmcp"])
+
+    if with_editable:
+        cmd.extend(["--with-editable", str(with_editable)])
+
+    if with_packages:
+        for pkg in with_packages:
+            if pkg:
+                cmd.extend(["--with", pkg])
+
+    # Add fastmcp run command
+    cmd.extend(["fastmcp", "run", file_spec])
+    return cmd
+
+
+def _parse_file_path(file_spec: str) -> Tuple[Path, Optional[str]]:
+    """Parse a file path that may include a server object specification.
+
+    Args:
+        file_spec: Path to file, optionally with :object suffix
+
+    Returns:
+        Tuple of (file_path, server_object)
+    """
+    # First check if we have a Windows path (e.g., C:\...)
+    has_windows_drive = len(file_spec) > 1 and file_spec[1] == ":"
+
+    # Split on the last colon, but only if it's not part of the Windows drive letter
+    # and there's actually another colon in the string after the drive letter
+    if ":" in (file_spec[2:] if has_windows_drive else file_spec):
+        file_str, server_object = file_spec.rsplit(":", 1)
+    else:
+        file_str, server_object = file_spec, None
+
+    # Resolve the file path
+    file_path = Path(file_str).expanduser().resolve()
+    if not file_path.exists():
+        logger.error(f"File not found: {file_path}")
+        sys.exit(1)
+    if not file_path.is_file():
+        logger.error(f"Not a file: {file_path}")
+        sys.exit(1)
+
+    return file_path, server_object
+
+
+def _import_server(file: Path, server_object: Optional[str] = None):
+    """Import a FastMCP server from a file.
+
+    Args:
+        file: Path to the file
+        server_object: Optional object name in format "module:object" or just "object"
+
+    Returns:
+        The server object
+    """
+    # Add parent directory to Python path so imports can be resolved
+    file_dir = str(file.parent)
+    if file_dir not in sys.path:
+        sys.path.insert(0, file_dir)
+
+    # Import the module
+    spec = importlib.util.spec_from_file_location("server_module", file)
+    if not spec or not spec.loader:
+        logger.error("Could not load module", extra={"file": str(file)})
+        sys.exit(1)
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # If no object specified, try common server names
+    if not server_object:
+        # Look for the most common server object names
+        for name in ["mcp", "server", "app"]:
+            if hasattr(module, name):
+                return getattr(module, name)
+
+        logger.error(
+            f"No server object found in {file}. Please either:\n"
+            "1. Use a standard variable name (mcp, server, or app)\n"
+            "2. Specify the object name with file:object syntax",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+    # Handle module:object syntax
+    if ":" in server_object:
+        module_name, object_name = server_object.split(":", 1)
+        try:
+            server_module = importlib.import_module(module_name)
+            server = getattr(server_module, object_name, None)
+        except ImportError:
+            logger.error(
+                f"Could not import module '{module_name}'",
+                extra={"file": str(file)},
+            )
+            sys.exit(1)
+    else:
+        # Just object name
+        server = getattr(module, server_object, None)
+
+    if server is None:
+        logger.error(
+            f"Server object '{server_object}' not found",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+    return server
+
+
+@app.command()
+def version() -> None:
+    """Show the FastMCP version."""
+    try:
+        version = importlib.metadata.version("fastmcp")
+        print(f"FastMCP version {version}")
+    except importlib.metadata.PackageNotFoundError:
+        print("FastMCP version unknown (package not installed)")
+        sys.exit(1)
+
+
+@app.command()
+def dev(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    with_editable: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--with-editable",
+            "-e",
+            help="Directory containing pyproject.toml to install in editable mode",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+    with_packages: Annotated[
+        list[str],
+        typer.Option(
+            "--with",
+            help="Additional packages to install",
+        ),
+    ] = [],
+) -> None:
+    """Run a FastMCP server with the MCP Inspector."""
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Starting dev server",
+        extra={
+            "file": str(file),
+            "server_object": server_object,
+            "with_editable": str(with_editable) if with_editable else None,
+            "with_packages": with_packages,
+        },
+    )
+
+    try:
+        # Import server to get dependencies
+        server = _import_server(file, server_object)
+        if hasattr(server, "dependencies"):
+            with_packages = list(set(with_packages + server.dependencies))
+
+        uv_cmd = _build_uv_command(file_spec, with_editable, with_packages)
+
+        # Get the correct npx command
+        npx_cmd = _get_npx_command()
+        if not npx_cmd:
+            logger.error(
+                "npx not found. Please ensure Node.js and npm are properly installed "
+                "and added to your system PATH."
+            )
+            sys.exit(1)
+
+        # Run the MCP Inspector command with shell=True on Windows
+        shell = sys.platform == "win32"
+        process = subprocess.run(
+            [npx_cmd, "@modelcontextprotocol/inspector"] + uv_cmd,
+            check=True,
+            shell=shell,
+            env=dict(os.environ.items()),  # Convert to list of tuples for env update
+        )
+        sys.exit(process.returncode)
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            "Dev server failed",
+            extra={
+                "file": str(file),
+                "error": str(e),
+                "returncode": e.returncode,
+            },
+        )
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        logger.error(
+            "npx not found. Please ensure Node.js and npm are properly installed "
+            "and added to your system PATH. You may need to restart your terminal "
+            "after installation.",
+            extra={"file": str(file)},
+        )
+        sys.exit(1)
+
+
+@app.command()
+def run(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    transport: Annotated[
+        Optional[str],
+        typer.Option(
+            "--transport",
+            "-t",
+            help="Transport protocol to use (stdio or sse)",
+        ),
+    ] = None,
+) -> None:
+    """Run a FastMCP server.
+
+    The server can be specified in two ways:
+    1. Module approach: server.py - runs the module directly, expecting a server.run() call
+    2. Import approach: server.py:app - imports and runs the specified server object
+
+    Note: This command runs the server directly. You are responsible for ensuring
+    all dependencies are available. For dependency management, use fastmcp install
+    or fastmcp dev instead.
+    """
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Running server",
+        extra={
+            "file": str(file),
+            "server_object": server_object,
+            "transport": transport,
+        },
+    )
+
+    try:
+        # Import and get server object
+        server = _import_server(file, server_object)
+
+        # Run the server
+        kwargs = {}
+        if transport:
+            kwargs["transport"] = transport
+
+        server.run(**kwargs)
+
+    except Exception as e:
+        logger.error(
+            f"Failed to run server: {e}",
+            extra={
+                "file": str(file),
+                "error": str(e),
+            },
+        )
+        sys.exit(1)
+
+
+@app.command()
+def install(
+    file_spec: str = typer.Argument(
+        ...,
+        help="Python file to run, optionally with :object suffix",
+    ),
+    server_name: Annotated[
+        Optional[str],
+        typer.Option(
+            "--name",
+            "-n",
+            help="Custom name for the server (defaults to server's name attribute or file name)",
+        ),
+    ] = None,
+    with_editable: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--with-editable",
+            "-e",
+            help="Directory containing pyproject.toml to install in editable mode",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+    with_packages: Annotated[
+        list[str],
+        typer.Option(
+            "--with",
+            help="Additional packages to install",
+        ),
+    ] = [],
+    env_vars: Annotated[
+        list[str],
+        typer.Option(
+            "--env-var",
+            "-e",
+            help="Environment variables in KEY=VALUE format",
+        ),
+    ] = [],
+    env_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--env-file",
+            "-f",
+            help="Load environment variables from a .env file",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
+    """Install a FastMCP server in the Claude desktop app.
+
+    Environment variables are preserved once added and only updated if new values
+    are explicitly provided.
+    """
+    file, server_object = _parse_file_path(file_spec)
+
+    logger.debug(
+        "Installing server",
+        extra={
+            "file": str(file),
+            "server_name": server_name,
+            "server_object": server_object,
+            "with_editable": str(with_editable) if with_editable else None,
+            "with_packages": with_packages,
+        },
+    )
+
+    if not claude.get_claude_config_path():
+        logger.error("Claude app not found")
+        sys.exit(1)
+
+    # Try to import server to get its name, but fall back to file name if dependencies missing
+    name = server_name
+    server = None
+    if not name:
+        try:
+            server = _import_server(file, server_object)
+            name = server.name
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.debug(
+                "Could not import server (likely missing dependencies), using file name",
+                extra={"error": str(e)},
+            )
+            name = file.stem
+
+    # Get server dependencies if available
+    server_dependencies = getattr(server, "dependencies", []) if server else []
+    if server_dependencies:
+        with_packages = list(set(with_packages + server_dependencies))
+
+    # Process environment variables if provided
+    env_dict: Optional[Dict[str, str]] = None
+    if env_file or env_vars:
+        env_dict = {}
+        # Load from .env file if specified
+        if env_file:
+            try:
+                env_dict |= {
+                    k: v
+                    for k, v in dotenv.dotenv_values(env_file).items()
+                    if v is not None
+                }
+            except Exception as e:
+                logger.error(f"Failed to load .env file: {e}")
+                sys.exit(1)
+
+        # Add command line environment variables
+        for env_var in env_vars:
+            key, value = _parse_env_var(env_var)
+            env_dict[key] = value
+
+    if claude.update_claude_config(
+        file_spec,
+        name,
+        with_editable=with_editable,
+        with_packages=with_packages,
+        env_vars=env_dict,
+    ):
+        logger.info(f"Successfully installed {name} in Claude app")
+    else:
+        logger.error(f"Failed to install {name} in Claude app")
+        sys.exit(1)
+
+
+================================================
+File: /src/fastmcp/utilities/logging.py
+================================================
+"""Logging utilities for FastMCP."""
+
+import logging
+from typing import Literal
+
+from rich.console import Console
+from rich.logging import RichHandler
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger nested under FastMCP namespace.
+
+    Args:
+        name: the name of the logger, which will be prefixed with 'FastMCP.'
+
+    Returns:
+        a configured logger instance
+    """
+    return logging.getLogger(f"FastMCP.{name}")
+
+
+def configure_logging(
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO",
+) -> None:
+    """Configure logging for FastMCP.
+
+    Args:
+        level: the log level to use
+    """
+    logging.basicConfig(
+        level=level,
+        format="%(message)s",
+        handlers=[RichHandler(console=Console(stderr=True), rich_tracebacks=True)],
+    )
+
+
+================================================
+File: /src/fastmcp/utilities/func_metadata.py
+================================================
+import inspect
+from collections.abc import Callable, Sequence, Awaitable
+from typing import (
+    Annotated,
+    Any,
+    Dict,
+    ForwardRef,
+)
+from pydantic import Field
+from fastmcp.exceptions import InvalidSignature
+from pydantic._internal._typing_extra import eval_type_lenient
+import json
+from pydantic import BaseModel
+from pydantic.fields import FieldInfo
+from pydantic import ConfigDict, create_model
+from pydantic import WithJsonSchema
+from pydantic_core import PydanticUndefined
+from fastmcp.utilities.logging import get_logger
+
+
+logger = get_logger(__name__)
+
+
+class ArgModelBase(BaseModel):
+    """A model representing the arguments to a function."""
+
+    def model_dump_one_level(self) -> dict[str, Any]:
+        """Return a dict of the model's fields, one level deep.
+
+        That is, sub-models etc are not dumped - they are kept as pydantic models.
+        """
+        kwargs: dict[str, Any] = {}
+        for field_name in self.model_fields.keys():
+            kwargs[field_name] = getattr(self, field_name)
+        return kwargs
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+
+class FuncMetadata(BaseModel):
+    arg_model: Annotated[type[ArgModelBase], WithJsonSchema(None)]
+    # We can add things in the future like
+    #  - Maybe some args are excluded from attempting to parse from JSON
+    #  - Maybe some args are special (like context) for dependency injection
+
+    async def call_fn_with_arg_validation(
+        self,
+        fn: Callable[..., Any] | Awaitable[Any],
+        fn_is_async: bool,
+        arguments_to_validate: dict[str, Any],
+        arguments_to_pass_directly: dict[str, Any] | None,
+    ) -> Any:
+        """Call the given function with arguments validated and injected.
+
+        Arguments are first attempted to be parsed from JSON, then validated against
+        the argument model, before being passed to the function.
+        """
+        arguments_pre_parsed = self.pre_parse_json(arguments_to_validate)
+        arguments_parsed_model = self.arg_model.model_validate(arguments_pre_parsed)
+        arguments_parsed_dict = arguments_parsed_model.model_dump_one_level()
+
+        arguments_parsed_dict |= arguments_to_pass_directly or {}
+
+        if fn_is_async:
+            if isinstance(fn, Awaitable):
+                return await fn
+            return await fn(**arguments_parsed_dict)
+        if isinstance(fn, Callable):
+            return fn(**arguments_parsed_dict)
+        raise TypeError("fn must be either Callable or Awaitable")
+
+    def pre_parse_json(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Pre-parse data from JSON.
+
+        Return a dict with same keys as input but with values parsed from JSON
+        if appropriate.
+
+        This is to handle cases like `["a", "b", "c"]` being passed in as JSON inside
+        a string rather than an actual list. Claude desktop is prone to this - in fact
+        it seems incapable of NOT doing this. For sub-models, it tends to pass
+        dicts (JSON objects) as JSON strings, which can be pre-parsed here.
+        """
+        new_data = data.copy()  # Shallow copy
+        for field_name, field_info in self.arg_model.model_fields.items():
+            if field_name not in data.keys():
+                continue
+            if isinstance(data[field_name], str):
+                try:
+                    pre_parsed = json.loads(data[field_name])
+                except json.JSONDecodeError:
+                    continue  # Not JSON - skip
+                if isinstance(pre_parsed, (str, int, float)):
+                    # This is likely that the raw value is e.g. `"hello"` which we
+                    # Should really be parsed as '"hello"' in Python - but if we parse
+                    # it as JSON it'll turn into just 'hello'. So we skip it.
+                    continue
+                new_data[field_name] = pre_parsed
+        assert new_data.keys() == data.keys()
+        return new_data
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
+
+def func_metadata(func: Callable, skip_names: Sequence[str] = ()) -> FuncMetadata:
+    """Given a function, return metadata including a pydantic model representing its signature.
+
+    The use case for this is
+    ```
+    meta = func_to_pyd(func)
+    validated_args = meta.arg_model.model_validate(some_raw_data_dict)
+    return func(**validated_args.model_dump_one_level())
+    ```
+
+    **critically** it also provides pre-parse helper to attempt to parse things from JSON.
+
+    Args:
+        func: The function to convert to a pydantic model
+        skip_names: A list of parameter names to skip. These will not be included in
+            the model.
+    Returns:
+        A pydantic model representing the function's signature.
+    """
+    sig = _get_typed_signature(func)
+    params = sig.parameters
+    dynamic_pydantic_model_params: dict[str, Any] = {}
+    globalns = getattr(func, "__globals__", {})
+    for param in params.values():
+        if param.name.startswith("_"):
+            raise InvalidSignature(
+                f"Parameter {param.name} of {func.__name__} may not start with an underscore"
+            )
+        if param.name in skip_names:
+            continue
+        annotation = param.annotation
+
+        # `x: None` / `x: None = None`
+        if annotation is None:
+            annotation = Annotated[
+                None,
+                Field(
+                    default=param.default
+                    if param.default is not inspect.Parameter.empty
+                    else PydanticUndefined
+                ),
+            ]
+
+        # Untyped field
+        if annotation is inspect.Parameter.empty:
+            annotation = Annotated[
+                Any,
+                Field(),
+                # 🤷
+                WithJsonSchema({"title": param.name, "type": "string"}),
+            ]
+
+        field_info = FieldInfo.from_annotated_attribute(
+            _get_typed_annotation(annotation, globalns),
+            param.default
+            if param.default is not inspect.Parameter.empty
+            else PydanticUndefined,
+        )
+        dynamic_pydantic_model_params[param.name] = (field_info.annotation, field_info)
+        continue
+
+    arguments_model = create_model(
+        f"{func.__name__}Arguments",
+        **dynamic_pydantic_model_params,
+        __base__=ArgModelBase,
+    )
+    resp = FuncMetadata(arg_model=arguments_model)
+    return resp
+
+
+def _get_typed_annotation(annotation: Any, globalns: Dict[str, Any]) -> Any:
+    if isinstance(annotation, str):
+        annotation = ForwardRef(annotation)
+        annotation = eval_type_lenient(annotation, globalns, globalns)
+
+    return annotation
+
+
+def _get_typed_signature(call: Callable[..., Any]) -> inspect.Signature:
+    """Get function signature while evaluating forward references"""
+    signature = inspect.signature(call)
+    globalns = getattr(call, "__globals__", {})
+    typed_params = [
+        inspect.Parameter(
+            name=param.name,
+            kind=param.kind,
+            default=param.default,
+            annotation=_get_typed_annotation(param.annotation, globalns),
+        )
+        for param in signature.parameters.values()
+    ]
+    typed_signature = inspect.Signature(typed_params)
+    return typed_signature
+
+
+================================================
+File: /src/fastmcp/utilities/__init__.py
+================================================
+"""FastMCP utility modules."""
+
+
+================================================
+File: /src/fastmcp/utilities/types.py
+================================================
+"""Common types used across FastMCP."""
+
+import base64
+from pathlib import Path
+from typing import Optional, Union
+
+from mcp.types import ImageContent
+
+
+class Image:
+    """Helper class for returning images from tools."""
+
+    def __init__(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        data: Optional[bytes] = None,
+        format: Optional[str] = None,
+    ):
+        if path is None and data is None:
+            raise ValueError("Either path or data must be provided")
+        if path is not None and data is not None:
+            raise ValueError("Only one of path or data can be provided")
+
+        self.path = Path(path) if path else None
+        self.data = data
+        self._format = format
+        self._mime_type = self._get_mime_type()
+
+    def _get_mime_type(self) -> str:
+        """Get MIME type from format or guess from file extension."""
+        if self._format:
+            return f"image/{self._format.lower()}"
+
+        if self.path:
+            suffix = self.path.suffix.lower()
+            return {
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+            }.get(suffix, "application/octet-stream")
+        return "image/png"  # default for raw binary data
+
+    def to_image_content(self) -> ImageContent:
+        """Convert to MCP ImageContent."""
+        if self.path:
+            with open(self.path, "rb") as f:
+                data = base64.b64encode(f.read()).decode()
+        elif self.data is not None:
+            data = base64.b64encode(self.data).decode()
+        else:
+            raise ValueError("No image data available")
+
+        return ImageContent(type="image", data=data, mimeType=self._mime_type)
+
+
+================================================
+File: /src/fastmcp/prompts/prompt_manager.py
+================================================
+"""Prompt management functionality."""
+
+from typing import Dict, Optional
+
+
+from fastmcp.prompts.base import Prompt
+from fastmcp.utilities.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class PromptManager:
+    """Manages FastMCP prompts."""
+
+    def __init__(self, warn_on_duplicate_prompts: bool = True):
+        self._prompts: Dict[str, Prompt] = {}
+        self.warn_on_duplicate_prompts = warn_on_duplicate_prompts
+
+    def add_prompt(self, prompt: Prompt) -> Prompt:
+        """Add a prompt to the manager."""
+        logger.debug(f"Adding prompt: {prompt.name}")
+        existing = self._prompts.get(prompt.name)
+        if existing:
+            if self.warn_on_duplicate_prompts:
+                logger.warning(f"Prompt already exists: {prompt.name}")
+            return existing
+        self._prompts[prompt.name] = prompt
+        return prompt
+
+    def get_prompt(self, name: str) -> Optional[Prompt]:
+        """Get prompt by name."""
+        return self._prompts.get(name)
+
+    def list_prompts(self) -> list[Prompt]:
+        """List all registered prompts."""
+        return list(self._prompts.values())
+
+
+================================================
+File: /src/fastmcp/prompts/__init__.py
+================================================
+from .base import Prompt
+from .manager import PromptManager
+
+__all__ = ["Prompt", "PromptManager"]
+
+
+================================================
+File: /src/fastmcp/prompts/manager.py
+================================================
+"""Prompt management functionality."""
+
+from typing import Any, Dict, Optional
+
+from fastmcp.prompts.base import Message, Prompt
+from fastmcp.utilities.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class PromptManager:
+    """Manages FastMCP prompts."""
+
+    def __init__(self, warn_on_duplicate_prompts: bool = True):
+        self._prompts: Dict[str, Prompt] = {}
+        self.warn_on_duplicate_prompts = warn_on_duplicate_prompts
+
+    def get_prompt(self, name: str) -> Optional[Prompt]:
+        """Get prompt by name."""
+        return self._prompts.get(name)
+
+    def list_prompts(self) -> list[Prompt]:
+        """List all registered prompts."""
+        return list(self._prompts.values())
+
+    def add_prompt(
+        self,
+        prompt: Prompt,
+    ) -> Prompt:
+        """Add a prompt to the manager."""
+
+        # Check for duplicates
+        existing = self._prompts.get(prompt.name)
+        if existing:
+            if self.warn_on_duplicate_prompts:
+                logger.warning(f"Prompt already exists: {prompt.name}")
+            return existing
+
+        self._prompts[prompt.name] = prompt
+        return prompt
+
+    async def render_prompt(
+        self, name: str, arguments: Optional[Dict[str, Any]] = None
+    ) -> list[Message]:
+        """Render a prompt by name with arguments."""
+        prompt = self.get_prompt(name)
+        if not prompt:
+            raise ValueError(f"Unknown prompt: {name}")
+
+        return await prompt.render(arguments)
+
+
+================================================
+File: /src/fastmcp/prompts/base.py
+================================================
+"""Base classes for FastMCP prompts."""
+
+import json
+from typing import Any, Callable, Dict, Literal, Optional, Sequence, Awaitable
+import inspect
+
+from pydantic import BaseModel, Field, TypeAdapter, validate_call
+from mcp.types import TextContent, ImageContent, EmbeddedResource
+import pydantic_core
+
+CONTENT_TYPES = TextContent | ImageContent | EmbeddedResource
+
+
+class Message(BaseModel):
+    """Base class for all prompt messages."""
+
+    role: Literal["user", "assistant"]
+    content: CONTENT_TYPES
+
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        if isinstance(content, str):
+            content = TextContent(type="text", text=content)
+        super().__init__(content=content, **kwargs)
+
+
+class UserMessage(Message):
+    """A message from the user."""
+
+    role: Literal["user"] = "user"
+
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        super().__init__(content=content, **kwargs)
+
+
+class AssistantMessage(Message):
+    """A message from the assistant."""
+
+    role: Literal["assistant"] = "assistant"
+
+    def __init__(self, content: str | CONTENT_TYPES, **kwargs):
+        super().__init__(content=content, **kwargs)
+
+
+message_validator = TypeAdapter(UserMessage | AssistantMessage)
+
+SyncPromptResult = (
+    str | Message | dict[str, Any] | Sequence[str | Message | dict[str, Any]]
+)
+PromptResult = SyncPromptResult | Awaitable[SyncPromptResult]
+
+
+class PromptArgument(BaseModel):
+    """An argument that can be passed to a prompt."""
+
+    name: str = Field(description="Name of the argument")
+    description: str | None = Field(
+        None, description="Description of what the argument does"
+    )
+    required: bool = Field(
+        default=False, description="Whether the argument is required"
+    )
+
+
+class Prompt(BaseModel):
+    """A prompt template that can be rendered with parameters."""
+
+    name: str = Field(description="Name of the prompt")
+    description: str | None = Field(
+        None, description="Description of what the prompt does"
+    )
+    arguments: list[PromptArgument] | None = Field(
+        None, description="Arguments that can be passed to the prompt"
+    )
+    fn: Callable = Field(exclude=True)
+
+    @classmethod
+    def from_function(
+        cls,
+        fn: Callable[..., PromptResult],
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> "Prompt":
+        """Create a Prompt from a function.
+
+        The function can return:
+        - A string (converted to a message)
+        - A Message object
+        - A dict (converted to a message)
+        - A sequence of any of the above
+        """
+        func_name = name or fn.__name__
+
+        if func_name == "<lambda>":
+            raise ValueError("You must provide a name for lambda functions")
+
+        # Get schema from TypeAdapter - will fail if function isn't properly typed
+        parameters = TypeAdapter(fn).json_schema()
+
+        # Convert parameters to PromptArguments
+        arguments = []
+        if "properties" in parameters:
+            for param_name, param in parameters["properties"].items():
+                required = param_name in parameters.get("required", [])
+                arguments.append(
+                    PromptArgument(
+                        name=param_name,
+                        description=param.get("description"),
+                        required=required,
+                    )
+                )
+
+        # ensure the arguments are properly cast
+        fn = validate_call(fn)
+
+        return cls(
+            name=func_name,
+            description=description or fn.__doc__ or "",
+            arguments=arguments,
+            fn=fn,
+        )
+
+    async def render(self, arguments: Optional[Dict[str, Any]] = None) -> list[Message]:
+        """Render the prompt with arguments."""
+        # Validate required arguments
+        if self.arguments:
+            required = {arg.name for arg in self.arguments if arg.required}
+            provided = set(arguments or {})
+            missing = required - provided
+            if missing:
+                raise ValueError(f"Missing required arguments: {missing}")
+
+        try:
+            # Call function and check if result is a coroutine
+            result = self.fn(**(arguments or {}))
+            if inspect.iscoroutine(result):
+                result = await result
+
+            # Validate messages
+            if not isinstance(result, (list, tuple)):
+                result = [result]
+
+            # Convert result to messages
+            messages = []
+            for msg in result:
+                try:
+                    if isinstance(msg, Message):
+                        messages.append(msg)
+                    elif isinstance(msg, dict):
+                        msg = message_validator.validate_python(msg)
+                        messages.append(msg)
+                    elif isinstance(msg, str):
+                        messages.append(
+                            UserMessage(content=TextContent(type="text", text=msg))
+                        )
+                    else:
+                        msg = json.dumps(pydantic_core.to_jsonable_python(msg))
+                        messages.append(Message(role="user", content=msg))
+                except Exception:
+                    raise ValueError(
+                        f"Could not convert prompt result to message: {msg}"
+                    )
+
+            return messages
+        except Exception as e:
+            raise ValueError(f"Error rendering prompt {self.name}: {e}")
+
+
+================================================
+File: /src/fastmcp/py.typed
+================================================
+
+
+================================================
+File: /src/fastmcp/exceptions.py
+================================================
+"""Custom exceptions for FastMCP."""
+
+
+class FastMCPError(Exception):
+    """Base error for FastMCP."""
+
+
+class ValidationError(FastMCPError):
+    """Error in validating parameters or return values."""
+
+
+class ResourceError(FastMCPError):
+    """Error in resource operations."""
+
+
+class ToolError(FastMCPError):
+    """Error in tool operations."""
+
+
+class InvalidSignature(Exception):
+    """Invalid signature for use with FastMCP."""
+
+
