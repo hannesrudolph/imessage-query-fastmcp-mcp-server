@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from typing import Dict, Any, Optional
 from fastmcp import FastMCP
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import imessagedb
 import phonenumbers
 import contextlib
@@ -191,16 +191,18 @@ def get_chat_transcript(
             # Filter messages by date if specified
             filtered_messages = []
             for msg in messages.message_list:
-                msg_date = datetime.strptime(msg.date[:10], "%Y-%m-%d")
+                # Parse message date as local time and convert to UTC
+                msg_dt = datetime.strptime(msg.date, "%Y-%m-%d %H:%M:%S").astimezone(timezone.utc)
+                msg_date = msg_dt.date()
                 
                 if start_date:
-                    start_dt = datetime.fromisoformat(start_date)
-                    if msg_date < start_dt:
+                    start_dt = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+                    if msg_date < start_dt.date():
                         continue
                         
                 if end_date:
-                    end_dt = datetime.fromisoformat(end_date)
-                    if msg_date > end_dt:
+                    end_dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+                    if msg_date > end_dt.date():
                         continue
                         
                 # Handle attachments
@@ -225,7 +227,7 @@ def get_chat_transcript(
 
                 filtered_messages.append({
                     "text": msg.text,
-                    "date": msg.date,
+                    "date": msg_dt.strftime("%Y-%m-%d %H:%M:%SZ"),
                     "is_from_me": msg.is_from_me,
                     "has_attachments": bool(attachments),
                     "attachments": attachments
@@ -339,7 +341,7 @@ def get_chat_transcript_beta(
             for handle_id in handle_numbers:
                 query = """
                 SELECT m.ROWID, m.guid,
-                       datetime(m.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime') as date,
+                       datetime(m.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch') as date,
                        m.is_from_me, m.handle_id, m.text, m.attributedBody, m.message_summary_info
                 FROM message m 
                 JOIN handle h ON m.handle_id = h.ROWID 
@@ -365,7 +367,7 @@ def get_chat_transcript_beta(
             
             # Set default date range to last 7 days if not specified
             if not start_date and not end_date:
-                end_dt = datetime.now()
+                end_dt = datetime.now(timezone.utc)
                 start_dt = end_dt - timedelta(days=7)
                 start_date = start_dt.strftime("%Y-%m-%d")
                 end_date = end_dt.strftime("%Y-%m-%d")
@@ -373,16 +375,18 @@ def get_chat_transcript_beta(
             # Filter messages by date if specified
             filtered_messages = []
             for msg in messages:
-                msg_date = datetime.strptime(msg["date"][:10], "%Y-%m-%d")
+                # Parse message date as UTC since we removed localtime from SQL query
+                msg_dt = datetime.strptime(msg["date"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                msg_date = msg_dt.date()
                 
                 if start_date:
-                    start_dt = datetime.fromisoformat(start_date)
-                    if msg_date < start_dt:
+                    start_dt = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+                    if msg_date < start_dt.date():
                         continue
                         
                 if end_date:
-                    end_dt = datetime.fromisoformat(end_date)
-                    if msg_date > end_dt:
+                    end_dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+                    if msg_date > end_dt.date():
                         continue
                 
                 # Get handle info
@@ -424,7 +428,7 @@ def get_chat_transcript_beta(
 
                 filtered_messages.append({
                     "text": msg["text"],
-                    "date": msg["date"],
+                    "date": msg_dt.strftime("%Y-%m-%d %H:%M:%SZ"),
                     "is_from_me": msg["is_from_me"],
                     "handle": handle_info,
                     "has_attachments": bool(attachments),
