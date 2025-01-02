@@ -51,23 +51,37 @@ def extract_message_text(text: str, attributed_body: bytes, message_summary_info
         
     if attributed_body:
         try:
-            # Extract text from attributed_body
-            text_data = attributed_body.split(b'NSNumber')[0]
-            text_data = text_data.split(b'NSString')[1]
-            text_data = text_data.split(b'NSDictionary')[0]
-            text_data = text_data[6:-12]
-            
-            # Handle various text encodings
-            if b'\x01' in text_data:
-                text_data = text_data.split(b'\x01')[1]
-            if b'\x02' in text_data:
-                text_data = text_data.split(b'\x02')[1]
-            if b'\x00' in text_data:
-                text_data = text_data.split(b'\x00')[1]
-            if b'\x86' in text_data:
-                text_data = text_data.split(b'\x86')[0]
+            # Find the NSString marker
+            ns_string_idx = attributed_body.find(b'NSString')
+            if ns_string_idx == -1:
+                return None
                 
-            return text_data.decode('utf-8', errors='replace')
+            # Look for the actual message content after NSString
+            content_marker = b'\x01+'
+            text_start = attributed_body.find(content_marker, ns_string_idx)
+            if text_start == -1:
+                return None
+                
+            # Skip the content marker and any control bytes
+            text_start += len(content_marker)
+            while text_start < len(attributed_body) and attributed_body[text_start] < 0x20:
+                text_start += 1
+                
+            # Find the end of the text (before the next control sequence)
+            text_end = attributed_body.find(b'\x86', text_start)
+            if text_end == -1:
+                text_end = len(attributed_body)
+                
+            # Extract and decode the text, removing any remaining control characters
+            text_data = attributed_body[text_start:text_end]
+            decoded = text_data.decode('utf-8', errors='replace')
+            # Clean up any remaining control characters except newlines
+            cleaned = ''.join(char for char in decoded if char == '\n' or char >= ' ')
+            # Remove replacement characters and image placeholders
+            cleaned = cleaned.replace('\ufffd', '').replace('\ufffc', '')
+            # Remove any leading/trailing whitespace
+            cleaned = cleaned.strip()
+            return cleaned if cleaned else None
         except Exception as e:
             print(f"Error extracting text from attributed_body: {e}")
     
