@@ -204,16 +204,23 @@ def get_chat_transcript(
     if not normalized_ids:
         raise ValueError("No valid identifiers provided")
         
-    # Validate identifiers exist in database
+    # Check which identifiers exist in database
+    invalid_ids = []
+    valid_ids = []
     with MessageDBConnection() as db:
-        invalid_ids = []
         for identifier in normalized_ids:
             db.connection.execute("SELECT COUNT(*) FROM handle WHERE id = ?", (identifier,))
             if db.connection.fetchone()[0] == 0:
                 invalid_ids.append(identifier)
-                
-        if invalid_ids:
-            raise ValueError(f"The following identifiers were not found in the database: {', '.join(invalid_ids)}")
+            else:
+                valid_ids.append(identifier)
+        
+    if not valid_ids:
+        return {
+            "messages": [],
+            "total_count": 0,
+            "warnings": [f"None of the provided identifiers were found in the database: {', '.join(invalid_ids)}"]
+        }
 
     if not DB_PATH.exists():
         raise FileNotFoundError(f"Messages database not found at: {DB_PATH}")
@@ -223,7 +230,7 @@ def get_chat_transcript(
         with MessageDBConnection() as db:
             try:
                 # Build query for multiple identifiers using UNION approach
-                placeholders = ','.join(['?' for _ in normalized_ids])
+                placeholders = ','.join(['?' for _ in valid_ids])
                 query = f"""
                     -- Get messages from direct handle associations
                     SELECT DISTINCT m1.ROWID, m1.guid, m1.text, m1.is_from_me, m1.date, 
@@ -247,8 +254,8 @@ def get_chat_transcript(
                     )
                     ORDER BY date ASC
                 """
-                # Execute with normalized_ids twice since we have two placeholders sets
-                db.connection.execute(query, normalized_ids + normalized_ids)
+                # Execute with valid_ids twice since we have two placeholders sets
+                db.connection.execute(query, valid_ids + valid_ids)
                 rows = db.connection.fetchall()
                 
                 # Process messages
@@ -304,10 +311,15 @@ def get_chat_transcript(
                         "attachments": attachments
                     })
             
-                return {
+                response = {
                     "messages": filtered_messages,
                     "total_count": len(filtered_messages)
                 }
+                
+                if invalid_ids:
+                    response["warnings"] = [f"The following identifiers were not found in the database: {', '.join(invalid_ids)}"]
+                
+                return response
             except Exception as e:
                 # Handle any errors during message retrieval
                 print(f"Error retrieving messages: {str(e)}")
