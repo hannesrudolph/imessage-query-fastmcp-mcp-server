@@ -165,14 +165,14 @@ class MessageDBConnection:
 
 @mcp.tool()
 def get_chat_transcript(
-    phone_number: str,
+    identifiers: str,
     start_date: str = None,
     end_date: str = None
 ) -> Dict[str, Any]:
-    """Get chat transcript for a specific phone number within a date range.
+    """Get chat transcript for one or more identifiers (phone numbers/emails) within a date range.
     
     Args:
-        phone_number: Phone number to get transcript for (E.164 format preferred)
+        identifiers: Comma-separated list of identifiers (phone numbers in E.164 format preferred, or email addresses)
         start_date: Optional start date in ISO format (YYYY-MM-DD)
         end_date: Optional end date in ISO format (YYYY-MM-DD)
     
@@ -180,18 +180,40 @@ def get_chat_transcript(
         Dictionary containing the chat transcript data
     
     Raises:
-        ValueError: If the phone number is invalid
+        ValueError: If any identifier is invalid
     """
-    # Validate and format the phone number
-    try:
-        # Parse assuming US number if no region provided
-        parsed_number = phonenumbers.parse(phone_number, "US")
-        if not phonenumbers.is_valid_number(parsed_number):
-            raise ValueError(f"Invalid phone number: {phone_number}")
-        # Format to E.164 format
-        phone_number = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
-    except phonenumbers.NumberParseException as e:
-        raise ValueError(f"Invalid phone number format: {e}")
+    # Split and clean identifiers
+    id_list = [id.strip() for id in identifiers.split(',')]
+    normalized_ids = []
+    
+    # Process each identifier
+    for identifier in id_list:
+        if '@' in identifier:  # Email address
+            normalized_ids.append(identifier)
+        else:  # Phone number
+            try:
+                # Parse assuming US number if no region provided
+                parsed_number = phonenumbers.parse(identifier, "US")
+                if not phonenumbers.is_valid_number(parsed_number):
+                    raise ValueError(f"Invalid phone number: {identifier}")
+                # Format to E.164 format
+                normalized_ids.append(phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164))
+            except phonenumbers.NumberParseException as e:
+                raise ValueError(f"Invalid phone number format for {identifier}: {e}")
+    
+    if not normalized_ids:
+        raise ValueError("No valid identifiers provided")
+        
+    # Validate identifiers exist in database
+    with MessageDBConnection() as db:
+        invalid_ids = []
+        for identifier in normalized_ids:
+            db.connection.execute("SELECT COUNT(*) FROM handle WHERE id = ?", (identifier,))
+            if db.connection.fetchone()[0] == 0:
+                invalid_ids.append(identifier)
+                
+        if invalid_ids:
+            raise ValueError(f"The following identifiers were not found in the database: {', '.join(invalid_ids)}")
 
     if not DB_PATH.exists():
         raise FileNotFoundError(f"Messages database not found at: {DB_PATH}")
@@ -200,18 +222,33 @@ def get_chat_transcript(
     with contextlib.redirect_stdout(io.StringIO()):
         with MessageDBConnection() as db:
             try:
-                # Get raw messages from the database first
-                query = """
-                    SELECT m.ROWID, m.guid, m.text, m.is_from_me, m.date, m.attributedBody, m.message_summary_info, m.handle_id
-                    FROM message m 
-                    JOIN chat_message_join cmj ON m.ROWID = cmj.message_id 
+                # Build query for multiple identifiers using UNION approach
+                placeholders = ','.join(['?' for _ in normalized_ids])
+                query = f"""
+                    -- Get messages from direct handle associations
+                    SELECT DISTINCT m1.ROWID, m1.guid, m1.text, m1.is_from_me, m1.date, 
+                           m1.attributedBody, m1.message_summary_info, m1.handle_id
+                    FROM message m1 
+                    WHERE m1.handle_id IN (
+                        SELECT rowid FROM handle 
+                        WHERE id IN ({placeholders})
+                    )
+                    UNION
+                    -- Get messages from chat associations
+                    SELECT DISTINCT m2.ROWID, m2.guid, m2.text, m2.is_from_me, m2.date,
+                           m2.attributedBody, m2.message_summary_info, m2.handle_id
+                    FROM message m2 
+                    JOIN chat_message_join cmj ON m2.ROWID = cmj.message_id 
                     JOIN chat c ON cmj.chat_id = c.ROWID 
                     JOIN chat_handle_join chj ON c.ROWID = chj.chat_id 
-                    JOIN handle h ON chj.handle_id = h.ROWID 
-                    WHERE h.id = ?
-                    ORDER BY m.date ASC
+                    WHERE chj.handle_id IN (
+                        SELECT rowid FROM handle 
+                        WHERE id IN ({placeholders})
+                    )
+                    ORDER BY date ASC
                 """
-                db.connection.execute(query, (phone_number,))
+                # Execute with normalized_ids twice since we have two placeholders sets
+                db.connection.execute(query, normalized_ids + normalized_ids)
                 rows = db.connection.fetchall()
                 
                 # Process messages
