@@ -13,7 +13,8 @@ import plistlib
 
 # Initialize FastMCP server
 mcp = FastMCP("iMessage Query", dependencies=["imessagedb", "phonenumbers"],
-    log_level="CRITICAL")
+    log_level="CRITICAL",
+    host="0.0.0.0", port=8123)
 
 # Default to Messages database in user's Library
 DEFAULT_DB_PATH = Path.home() / "Library" / "Messages" / "chat.db"
