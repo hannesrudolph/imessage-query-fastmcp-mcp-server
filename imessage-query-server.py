@@ -168,14 +168,14 @@ class MessageDBConnection:
 def get_chat_transcript(
     identifiers: str,
     start_date: str = None,
-    end_date: str = None
+    option_end_date: str = None
 ) -> Dict[str, Any]:
     """Get chat transcript for one or more identifiers (phone numbers/emails) within a date range.
     
     Args:
         identifiers: Comma-separated list of identifiers (phone numbers in E.164 format preferred, or email addresses)
         start_date: Optional start date in ISO format (YYYY-MM-DD)
-        end_date: Optional end date in ISO format (YYYY-MM-DD)
+        option_end_date: Optional end date in ISO format (YYYY-MM-DD). DO NOT USE UNLESS NECESSARY.
     
     Returns:
         Dictionary containing the chat transcript data
@@ -273,8 +273,8 @@ def get_chat_transcript(
                         if msg_date < start_dt.date():
                             continue
                             
-                    if end_date:
-                        end_dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+                    if option_end_date:
+                        end_dt = datetime.fromisoformat(option_end_date).replace(tzinfo=timezone.utc)
                         if msg_date > end_dt.date():
                             continue
                             
