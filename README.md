@@ -1,5 +1,7 @@
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/hannesrudolph-imessage-query-fastmcp-mcp-server-badge.png)](https://mseep.ai/app/hannesrudolph-imessage-query-fastmcp-mcp-server)
 
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/hannesrudolph/imessage-query-fastmcp-mcp-server)](https://archestra.ai/mcp-catalog/hannesrudolph__imessage-query-fastmcp-mcp-server)
+
 # iMessage Query MCP Server
 
 An MCP server that provides safe access to your iMessage database through Model Context Protocol (MCP). This server is built with the FastMCP framework and the imessagedb library, enabling LLMs to query and analyze iMessage conversations with proper phone number validation and automatic macOS permission handling.
