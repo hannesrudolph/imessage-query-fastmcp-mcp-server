@@ -1,1 +1,3 @@
 *.pyc
+.roo/mcp.json
+.roomodes

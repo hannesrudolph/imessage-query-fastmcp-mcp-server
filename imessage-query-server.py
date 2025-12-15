@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import shutil
 import subprocess
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from fastmcp import FastMCP
 from datetime import datetime, timedelta, timezone
 import imessagedb
@@ -167,8 +167,8 @@ class MessageDBConnection:
 @mcp.tool()
 def get_chat_transcript(
     identifiers: str,
-    start_date: str = None,
-    option_end_date: str = None
+    start_date: Optional[str] = None,
+    option_end_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """Get chat transcript for one or more identifiers (phone numbers/emails) within a date range.
     
@@ -183,6 +183,12 @@ def get_chat_transcript(
     Raises:
         ValueError: If any identifier is invalid
     """
+    # Handle cases where "null" is passed as a string instead of None
+    if start_date == "null" or start_date == "":
+        start_date = None
+    if option_end_date == "null" or option_end_date == "":
+        option_end_date = None
+        
     # Split and clean identifiers
     id_list = [id.strip() for id in identifiers.split(',')]
     normalized_ids = []
