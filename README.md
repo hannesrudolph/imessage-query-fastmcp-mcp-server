@@ -112,3 +112,8 @@ This documentation serves as context when developing features and can be used wi
 ## ⚙️ Environment Variables
 
 No environment variables are required as the server automatically locates the iMessage database in the default macOS location.
+
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/hannesrudolph-imessage-query-fastmcp-mcp-server).
+
